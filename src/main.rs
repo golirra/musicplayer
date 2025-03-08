@@ -1,6 +1,6 @@
 mod button;
-use crate::button::ButtonApp;
+use crate::button::PlaybackController;
 fn main() -> iced::Result {
    
-    iced::run("My program!", ButtonApp::update, ButtonApp::view)
+    iced::run("Play me some music", PlaybackController::update, PlaybackController::view)
 }
