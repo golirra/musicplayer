@@ -1,14 +1,14 @@
 mod button;
-mod playback;
-use crate::button::PlaybackController;
-use iced::Subscription;
+mod file;
+
+use crate::button::AudioPlaybackController;
 
 fn main() -> iced::Result {
    
     //iced::run("Play me some music", playback::update, playback::view)
-    //iced::run("Play me some music", PlaybackController::update, PlaybackController::view)
-    iced::application("Music", PlaybackController::update, PlaybackController::view)
-        .subscription(PlaybackController::subscription)
+    //iced::run("Play me some music", AudioPlaybackController::update, PlaybackController::view)
+    iced::application("Music", AudioPlaybackController::update, AudioPlaybackController::view)
+        .subscription(AudioPlaybackController::subscription)
         .run()
 
 }

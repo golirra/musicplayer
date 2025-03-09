@@ -8,7 +8,6 @@ use iced::Subscription;
 use iced::{Fill, Element};
 use iced::widget::{button, column, container, progress_bar, row, slider, text};
 use iced::window;
-use crate::playback;
 
 use rodio::{Decoder, OutputStream, Sink, Source};
 
@@ -33,9 +32,9 @@ pub struct AudioState {
 #[derive(Default)]
 pub struct AudioPlaybackController {
     volume: f32,
-    currentPosition: f32,
-    playbackSink: Option<Sink>,
-    _audioStream: Option<OutputStream>,
+    current_position: f32,
+    playback_sink: Option<Sink>,
+    _audio_stream: Option<OutputStream>,
 }
 
 #[derive(Clone, Debug)]
@@ -48,9 +47,9 @@ impl AudioPlaybackController {
     pub fn new() -> Self {
         Self {
             volume: 0.0,
-            currentPosition: 0.0,
-            playbackSink: None,
-            _audioStream: None,
+            current_position: 0.0,
+            playback_sink: None,
+            _audio_stream: None,
         }
     }
     
@@ -60,7 +59,7 @@ impl AudioPlaybackController {
                 slider(0.0..=100.0, self.volume, AudioAction::SliderPositionChanged),
                 progress_bar(0.0..=100.0, self.volume),
                 text(
-                    match &self.playbackSink {
+                    match &self.playback_sink {
                         Some(sink) => sink.get_pos(),
                         None => Duration::new(5, 0),
                     }.as_secs()
@@ -85,7 +84,6 @@ impl AudioPlaybackController {
     }
 
     pub fn subscription(&self) -> Subscription<AudioAction> {
-        println!("Subscription started");
         time::every(Duration::from_secs(1)).map(|_instant| AudioAction::PlaybackTick) // Update every second
     }
 
@@ -95,7 +93,7 @@ impl AudioPlaybackController {
                 self.load_audio();
             },
             AudioAction::TogglePlayPause => {
-                if let Some(sink) = &self.playbackSink {
+                if let Some(sink) = &self.playback_sink {
                     if sink.is_paused() {
                         sink.play();
                     } else {
@@ -110,14 +108,13 @@ impl AudioPlaybackController {
             },
             AudioAction::PlaybackTick => {
                 self.update_playback_position();
-                println!("PlaybackTick");
             },
             _ => {}, 
         }
     }
 
     pub fn load_audio(&mut self) {
-        if self.playbackSink.is_none() {
+        if self.playback_sink.is_none() {
             let (stream, stream_handle) = OutputStream::try_default().unwrap();
             let sink = Sink::try_new(&stream_handle).unwrap();
             let file = BufReader::new(File::open("song.mp3").unwrap());
@@ -126,26 +123,26 @@ impl AudioPlaybackController {
             sink.append(source);
             sink.set_volume(0.05);
 
-            self._audioStream = Some(stream);
-            self.playbackSink = Some(sink);
+            self._audio_stream = Some(stream);
+            self.playback_sink = Some(sink);
         }
     }
 
     pub fn update_playback_position(&mut self) {
-        if let Some(sink) = &self.playbackSink {
+        if let Some(sink) = &self.playback_sink {
             self.update(AudioAction::SliderPositionChanged(sink.get_pos().as_secs_f32()));
         }
     }
 
     pub fn play_audio(&mut self) {
-        if let Some(sink) = &self.playbackSink {
+        if let Some(sink) = &self.playback_sink {
             sink.play();
             self.volume = 51.0;
         }
     }
 
     pub fn pause_audio(&mut self) {
-        if let Some(sink) = &self.playbackSink {
+        if let Some(sink) = &self.playback_sink {
             sink.pause();
         }
     }
