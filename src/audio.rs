@@ -1,10 +1,12 @@
 //Anything that interacts with rodio goes in this file.
 
 #![allow(dead_code, unused_imports)]
-use std::fs::File;
+use std::fs;
 use std::io::BufReader;
 use std::time::Duration;
 use std::vec;
+
+use crate::file;
 
 use iced::time;
 use iced::widget::{button, column, container, progress_bar, row, slider, text};
@@ -44,6 +46,8 @@ enum PlayerMessage {
 }
 
 //Create a const array of buttons to iterate over instead of making buttons by spamming ".push(button)"
+//Also worth noting that you can't use "let" out here because "let" is a runtime variable and this
+//stuff has to be known before the program is running
 const BUTTONS: [(&str, AudioAction); 6] = [
     ("Load audio", AudioAction::LoadAudio),
     ("Stop", AudioAction::StopPlayback),
@@ -67,7 +71,10 @@ impl AudioPlaybackController {
 
     pub fn view(&self) -> Element<AudioAction> {
         //label, action are defined in BUTTONS array
-        let playback_bar = BUTTONS
+        let files = Self::get_filenames_in_directory();
+
+        
+        let temp_ui = BUTTONS
             .iter()
             .fold(Column::new(), |col, (label, action)| {
                 col.push(button(*label).on_press(*action))
@@ -79,8 +86,14 @@ impl AudioPlaybackController {
                     None => Duration::new(5, 0),
                 }
                 .as_secs(),
-            ));
-        playback_bar.into()
+            ))
+            .push(files.iter().fold(Column::new(), |col, file| {
+                col.push(text(file.clone()))
+            }),
+            );
+                            
+
+        temp_ui.into()
     }
 
     //TODO: Only track time when source is playing
@@ -119,7 +132,7 @@ impl AudioPlaybackController {
         if self.playback_sink.is_none() {
             let (stream, stream_handle) = OutputStream::try_default().unwrap();
             let sink = Sink::try_new(&stream_handle).unwrap();
-            let file = BufReader::new(File::open("song.mp3").unwrap());
+            let file = BufReader::new(fs::File::open("song.mp3").unwrap());
             let source = Decoder::new(file).unwrap();
 
             sink.append(source);
@@ -149,6 +162,13 @@ impl AudioPlaybackController {
         if let Some(sink) = &self.playback_sink {
             sink.pause();
         }
+    }
+
+    pub fn get_filenames_in_directory() -> Vec<String> {
+        fs::read_dir("./")
+            .unwrap()
+            .filter_map(|entry| entry.ok().and_then(|e| e.file_name().into_string().ok()))
+            .collect()
     }
 }
 
