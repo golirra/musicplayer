@@ -1,5 +1,7 @@
 #[allow(dead_code, unused_imports)]
-use iced::widget::{button, Button, column, container, progress_bar, row, slider, text, Text, Column};
+use iced::widget::{
+    button, column, container, progress_bar, row, slider, text, Button, Column, Text,
+};
 use iced::{Element, Theme};
 
 #[derive(Debug, Clone)]
@@ -10,6 +12,4 @@ enum PlaybackComponent {
     VolumeBar,
 }
 
-pub struct Layout {
-
-}
+pub struct Layout {}
