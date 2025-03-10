@@ -1,0 +1,13 @@
+-----------------------------------------------------------------------------------------------
+possible UI components: (we're just copying foobar's functionality since I love it so much)
+    playback bar - play/pause/stop/etc.
+    volume slider
+    song progress
+    file/edit/view/playback dropdown menus
+    file list display - show albums/artists/whatever sorting
+    track metadata
+    "playlist" viewer
+
+-----------------------------------------------------------------------------------------------
+
+Try mapping over closure to make buttons

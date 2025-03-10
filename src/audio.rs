@@ -1,15 +1,18 @@
-#![allow(dead_code)]
+//Anything that interacts with rodio (the audio lib I'm using) should go here?
+
+#![allow(dead_code, unused_imports)]
 use std::fs::File;
 use std::io::BufReader;
 use std::time::Duration;
 
-use iced::{executor, time, Application};
+use iced::{time};
 use iced::Subscription;
 use iced::{Fill, Element};
+use iced::widget::{Column, Container};
 use iced::widget::{button, column, container, progress_bar, row, slider, text};
-use iced::window;
+use iced::Theme;
 
-use rodio::{Decoder, OutputStream, Sink, Source};
+use rodio::{Decoder, OutputStream, Sink};
 
 #[derive(Clone, Debug)]
 pub enum AudioAction {
@@ -52,38 +55,42 @@ impl AudioPlaybackController {
             _audio_stream: None,
         }
     }
-    
+
     pub fn view(&self) -> Element<AudioAction> {
-        container(
-            row![
-                slider(0.0..=100.0, self.volume, AudioAction::SliderPositionChanged),
-                progress_bar(0.0..=100.0, self.volume),
-                text(
-                    match &self.playback_sink {
-                        Some(sink) => sink.get_pos(),
-                        None => Duration::new(5, 0),
-                    }.as_secs()
-                ),
-                container(
-                    row![
-                        button("Load audio").on_press(AudioAction::LoadAudio),
-                        button("Stop").on_press(AudioAction::StopPlayback),
-                        button("Play/Pause").on_press(AudioAction::TogglePlayPause),
-                        button("Pause").on_press(AudioAction::PausePlayback),
-                        button("Previous").on_press(AudioAction::PreviousTrack),
-                        button("Next").on_press(AudioAction::NextTrack),
-                        button("Random Next").on_press(AudioAction::RandomNextTrack),
-                    ]
-                    .spacing(1)
-                )
-            ]
-        )
-        .center_x(Fill)
-        .center_y(Fill)
-        .into()
+        let sliders = Column::new()
+            .push(slider(0.0..=100.0, self.volume, AudioAction::SliderPositionChanged))
+            .push(slider(0.0..=100.0, self.volume, AudioAction::SliderPositionChanged));
+
+        let content = Column::new()
+            .push(Container::new(sliders).padding(10));
+
+        content.into()
+            /*
+            progress_bar(0.0..=100.0, self.volume),
+            text(
+                match &self.playback_sink {
+                    Some(sink) => sink.get_pos(),
+                    None => Duration::new(5, 0),
+                }.as_secs()
+            ),
+            button("Load audio").on_press(AudioAction::LoadAudio),
+            button("Stop").on_press(AudioAction::StopPlayback),
+            button("Play/Pause").on_press(AudioAction::TogglePlayPause),
+            button("Pause").on_press(AudioAction::PausePlayback),
+            button("Previous").on_press(AudioAction::PreviousTrack),
+            button("Next").on_press(AudioAction::NextTrack),
+            button("Random Next").on_press(AudioAction::RandomNextTrack),
+
+                .spacing(1)
+                .center_x(Fill)
+                .center_y(Fill)
+                .into()
+            */
     }
 
+    //TODO: Only track time when source is playing
     pub fn subscription(&self) -> Subscription<AudioAction> {
+        println!("x");
         time::every(Duration::from_secs(1)).map(|_instant| AudioAction::PlaybackTick) // Update every second
     }
 
@@ -146,6 +153,7 @@ impl AudioPlaybackController {
             sink.pause();
         }
     }
+
 }
 
 #[cfg(test)]
@@ -158,4 +166,5 @@ mod tests {
         controller.update(AudioAction::TogglePlayPause);
     }
 }
+
 
