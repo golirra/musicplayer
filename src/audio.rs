@@ -5,18 +5,17 @@ use std::fs;
 use std::io::BufReader;
 use std::time::Duration;
 use std::vec;
+use tokio;
 
 use crate::file;
+use crate::utils;
 
 use iced::time;
 use iced::widget::{button, column, container, progress_bar, row, slider, text};
 use iced::widget::{Column, Container};
-use iced::Subscription;
-use iced::Theme;
-use iced::{Element, Fill};
+use iced::{Subscription, Theme, Element, Task, Fill};
 
 use rodio::{Decoder, OutputStream, Sink};
-
 //Represents the actions taken when a button is pressed
 #[derive(Copy, Clone, Debug)]
 pub enum AudioAction {
@@ -30,6 +29,7 @@ pub enum AudioAction {
     SliderPositionChanged(f32),
     UpdatePlaybackPosition(f32),
     PlaybackTick,
+    Test,
 }
 
 #[derive(Default)]
@@ -38,11 +38,6 @@ pub struct AudioPlaybackController {
     current_position: f32,
     playback_sink: Option<Sink>,
     _audio_stream: Option<OutputStream>,
-}
-
-#[derive(Clone, Debug)]
-enum PlayerMessage {
-    ButtonPressed,
 }
 
 //Create a const array of buttons to iterate over instead of making buttons by spamming ".push(button)"
@@ -87,6 +82,7 @@ impl AudioPlaybackController {
                 }
                 .as_secs(),
             ))
+            //Get filenames and display as text
             .push(files.iter().fold(Column::new(), |col, file| {
                 col.push(text(file.clone()))
             }),
@@ -103,10 +99,11 @@ impl AudioPlaybackController {
         // Update every second
     }
 
-    pub fn update(&mut self, message: AudioAction) {
+    pub fn update(&mut self, message: AudioAction) -> Task<AudioAction> {
         match message {
             AudioAction::LoadAudio => {
                 self.load_audio();
+                Task::none()
             }
             AudioAction::TogglePlayPause => {
                 if let Some(sink) = &self.playback_sink {
@@ -116,15 +113,27 @@ impl AudioPlaybackController {
                         sink.pause();
                     }
                 }
+                Task::none()
             }
             AudioAction::SliderPositionChanged(value) => {
                 self.volume = value;
+                Task::none()
             }
-            AudioAction::UpdatePlaybackPosition(value) => {}
+            AudioAction::UpdatePlaybackPosition(value) => {
+                Task::none()
+            }
             AudioAction::PlaybackTick => {
                 self.update_playback_position();
+                Task::none()
             }
-            _ => {}
+            AudioAction::Test => {
+                Task::none()
+            },
+
+
+            _ => {
+                Task::none()
+            }
         }
     }
 
@@ -145,7 +154,7 @@ impl AudioPlaybackController {
 
     pub fn update_playback_position(&mut self) {
         if let Some(sink) = &self.playback_sink {
-            self.update(AudioAction::SliderPositionChanged(
+            let _ = self.update(AudioAction::SliderPositionChanged(
                 sink.get_pos().as_secs_f32(),
             ));
         }
@@ -169,16 +178,5 @@ impl AudioPlaybackController {
             .unwrap()
             .filter_map(|entry| entry.ok().and_then(|e| e.file_name().into_string().ok()))
             .collect()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_update_playback() {
-        let mut controller = AudioPlaybackController::new();
-        controller.update(AudioAction::TogglePlayPause);
     }
 }

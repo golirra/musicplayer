@@ -9,5 +9,11 @@ possible UI components: (we're just copying foobar's functionality since I love 
     "playlist" viewer
 
 -----------------------------------------------------------------------------------------------
+TODO:
+grab song/file metadata
+sort functionality by artists/albums alphabetically
+search bar for specific string in file
 
+DONE:
 Try mapping over closure to make buttons
+
