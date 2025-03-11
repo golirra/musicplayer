@@ -9,9 +9,7 @@ use iced::Theme;
 use crate::audio::AudioPlaybackController;
 
 fn main() -> iced::Result {
-    println!("Test");
 
-    /*
     iced::application(
         "Test application",
         AudioPlaybackController::update,
@@ -21,16 +19,16 @@ fn main() -> iced::Result {
     .resizable(false)
     .theme(|_| Theme::Light)
     .run()
-    */
-    println!("Fuck");
 
 
 
+    /*
     iced::application(
         "Test application",
         test::update,
         test::view,
     )
     .run()
+*/
 
 }

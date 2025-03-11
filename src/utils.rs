@@ -11,12 +11,6 @@ pub struct Util {
 }
 
 impl Util {
-    pub fn new() -> Self {
-        //Make a new vec to hold the filenames
-        Self {
-            files: Vec::new(),
-        }
-    }
     pub async fn scan_library() -> Vec<String> {
         let mut filenames = Vec::new();
         if let Ok(mut entries) = tokio::fs::read_dir("./").await {

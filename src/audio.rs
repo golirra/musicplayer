@@ -12,8 +12,8 @@ use crate::utils;
 
 use iced::time;
 use iced::widget::{button, column, container, progress_bar, row, slider, text};
-use iced::widget::{Column, Container};
-use iced::{Subscription, Theme, Element, Task, Fill};
+use iced::widget::{Button, Column, Container};
+use iced::{Subscription, Renderer, Theme, Element, Task, Fill};
 
 use rodio::{Decoder, OutputStream, Sink};
 //Represents the actions taken when a button is pressed
@@ -30,6 +30,7 @@ pub enum AudioAction {
     UpdatePlaybackPosition(f32),
     PlaybackTick,
     Test,
+    ShowFiles,
 }
 
 #[derive(Default)]
@@ -38,6 +39,8 @@ pub struct AudioPlaybackController {
     current_position: f32,
     playback_sink: Option<Sink>,
     _audio_stream: Option<OutputStream>,
+    buttons: Vec<AudioAction>,
+    files: Vec<String>,
 }
 
 //Create a const array of buttons to iterate over instead of making buttons by spamming ".push(button)"
@@ -61,13 +64,15 @@ impl AudioPlaybackController {
             current_position: 0.0,
             playback_sink: None,
             _audio_stream: None,
+            buttons: vec![],
+            files: vec![],
         }
     }
 
     pub fn view(&self) -> Element<AudioAction> {
         //label, action are defined in BUTTONS array
         let files = Self::get_filenames_in_directory();
-
+/*
         
         let temp_ui = BUTTONS
             .iter()
@@ -85,18 +90,23 @@ impl AudioPlaybackController {
             //Get filenames and display as text
             .push(files.iter().fold(Column::new(), |col, file| {
                 col.push(text(file.clone()))
-            }),
-            );
-                            
+            })
+            )
+            .push(button("Dynamic button creator").on_press(AudioAction::ShowFiles))
 
-        temp_ui.into()
-    }
-
-    //TODO: Only track time when source is playing
-    pub fn subscription(&self) -> Subscription<AudioAction> {
-        println!("x");
-        time::every(Duration::from_secs(1)).map(|_instant| AudioAction::PlaybackTick)
-        // Update every second
+        ;//end of temp_ui
+*/
+        Column::new()
+            .push(button("Dynamic button creator").on_press(AudioAction::ShowFiles))
+            .push(
+                self.buttons
+                    .iter()
+                    .fold(Column::new(), |column, action| {
+                        column.push(button("Test button").on_press(*action))
+                    }),
+            )
+            .into()
+        // temp_.into() 
     }
 
     pub fn update(&mut self, message: AudioAction) -> Task<AudioAction> {
@@ -127,14 +137,25 @@ impl AudioPlaybackController {
                 Task::none()
             }
             AudioAction::Test => {
+                println!("dynamic button creation works");
                 Task::none()
             },
+            AudioAction::ShowFiles => {
+                self.buttons.push(AudioAction::Test);
 
-
+                Task::none()
+            },
             _ => {
                 Task::none()
             }
         }
+    }
+
+    //TODO: Only track time when source is playing
+    pub fn subscription(&self) -> Subscription<AudioAction> {
+        println!("x");
+        time::every(Duration::from_secs(1)).map(|_instant| AudioAction::PlaybackTick)
+        // Update every second
     }
 
     pub fn load_audio(&mut self) {
