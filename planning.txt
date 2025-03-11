@@ -1,3 +1,5 @@
+Gonna see if making a file like this helps my memory/recall of any work I've
+done for a later date
 -----------------------------------------------------------------------------------------------
 possible UI components: (we're just copying foobar's functionality since I love it so much)
     playback bar - play/pause/stop/etc.
@@ -13,6 +15,8 @@ TODO:
 grab song/file metadata
 sort functionality by artists/albums alphabetically
 search bar for specific string in file
+
+IN PROGRESS:
 
 DONE:
 Try mapping over closure to make buttons

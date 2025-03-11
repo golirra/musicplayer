@@ -22,6 +22,8 @@ fn main() -> iced::Result {
     .theme(|_| Theme::Light)
     .run()
     */
+    println!("Fuck");
+
 
 
     iced::application(
