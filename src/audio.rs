@@ -1,6 +1,7 @@
 //Anything that interacts with rodio goes in this file.
 
 #![allow(dead_code, unused_imports)]
+use std::sync::Arc;
 use std::fs;
 use std::io::BufReader;
 use std::time::Duration;
@@ -17,9 +18,10 @@ use iced::{Subscription, Renderer, Theme, Element, Task, Fill};
 
 use rodio::{Decoder, OutputStream, Sink};
 //Represents the actions taken when a button is pressed
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum AudioAction {
     LoadAudio,
+    Play(Arc<String>),
     StopPlayback,
     TogglePlayPause,
     PausePlayback,
@@ -40,7 +42,7 @@ pub struct AudioPlaybackController {
     playback_sink: Option<Sink>,
     _audio_stream: Option<OutputStream>,
     buttons: Vec<AudioAction>,
-    files: Vec<String>,
+    files: Vec<Arc<String>>,
 }
 
 //Create a const array of buttons to iterate over instead of making buttons by spamming ".push(button)"
@@ -97,12 +99,12 @@ impl AudioPlaybackController {
         ;//end of temp_ui
 */
         Column::new()
-            .push(button("Dynamic button creator").on_press(AudioAction::ShowFiles))
+            .push(button("Load Songs").on_press(AudioAction::ShowFiles))
             .push(
-                self.buttons
+                self.files
                     .iter()
-                    .fold(Column::new(), |column, action| {
-                        column.push(button("Test button").on_press(*action))
+                    .fold(Column::new(), |column, filename| {
+                        column.push(button(filename.as_str()).on_press(AudioAction::Play(filename.clone())))
                     }),
             )
             .into()
@@ -113,6 +115,10 @@ impl AudioPlaybackController {
         match message {
             AudioAction::LoadAudio => {
                 self.load_audio();
+                Task::none()
+            }
+            AudioAction::Play(filename) => {
+                println!("Playing: {}", filename);
                 Task::none()
             }
             AudioAction::TogglePlayPause => {
@@ -141,7 +147,7 @@ impl AudioPlaybackController {
                 Task::none()
             },
             AudioAction::ShowFiles => {
-                self.buttons.push(AudioAction::Test);
+                self.files = Self::get_filenames_in_directory().into_iter().map(Arc::new).collect();
 
                 Task::none()
             },
