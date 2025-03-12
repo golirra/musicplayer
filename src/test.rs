@@ -16,8 +16,6 @@ pub enum Message {
 pub fn view(state: &State) -> Element<'_, Message> {
     button("Scan library").on_press(Message::Scan)
         .into()
-
-
 }
 
 pub fn update(state: &mut State, message: Message) -> Task<Message> {

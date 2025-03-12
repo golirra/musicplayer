@@ -1,0 +1,9 @@
+-----------------------------------------------
+Stuff I want to save for the future to remember
+-----------------------------------------------
+
+//Get filenames and display as text
+.push(files.iter().fold(Column::new(), |col, file| {
+      col.push(text(file.clone()))
+      })
+    )

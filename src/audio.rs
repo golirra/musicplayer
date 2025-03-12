@@ -10,6 +10,7 @@ use tokio;
 
 use crate::file;
 use crate::utils;
+use crate::layout;
 
 use iced::time;
 use iced::widget::{button, column, container, progress_bar, row, slider, text};
@@ -19,14 +20,14 @@ use iced::{Subscription, Renderer, Theme, Element, Task, Fill};
 use rodio::{Decoder, OutputStream, Sink};
 //Represents the actions taken when a button is pressed
 #[derive(Clone, Debug)]
-pub enum AudioAction {
-    LoadAudio,
+pub enum Audio {
+    Load,
     Play(Arc<String>),
-    StopPlayback,
+    Stop,
     TogglePlayPause,
-    PausePlayback,
-    PreviousTrack,
-    NextTrack,
+    Pause,
+    Previous,
+    Next,
     RandomNextTrack,
     SliderPositionChanged(f32),
     UpdatePlaybackPosition(f32),
@@ -41,22 +42,8 @@ pub struct AudioPlaybackController {
     current_position: f32,
     playback_sink: Option<Sink>,
     _audio_stream: Option<OutputStream>,
-    buttons: Vec<AudioAction>,
-    files: Vec<Arc<String>>,
+    files: Vec<Arc<String>>,//might need to change in future based on how expensive Arc is
 }
-
-//Create a const array of buttons to iterate over instead of making buttons by spamming ".push(button)"
-//Also worth noting that you can't use "let" out here because "let" is a runtime variable and this
-//stuff has to be known before the program is running
-const BUTTONS: [(&str, AudioAction); 6] = [
-    ("Load audio", AudioAction::LoadAudio),
-    ("Stop", AudioAction::StopPlayback),
-    ("Play/Pause", AudioAction::TogglePlayPause),
-    ("Pause", AudioAction::PausePlayback),
-    ("Previous", AudioAction::PreviousTrack),
-    ("Next", AudioAction::NextTrack),
-];
-
 //TODO: Move all the UI stuff (like BUTTONS etc) to a new file, only audio functionality like
 //loading a song should be here
 impl AudioPlaybackController {
@@ -66,62 +53,30 @@ impl AudioPlaybackController {
             current_position: 0.0,
             playback_sink: None,
             _audio_stream: None,
-            buttons: vec![],
             files: vec![],
         }
     }
 
-    pub fn view(&self) -> Element<AudioAction> {
+    pub fn view(&self) -> Element<Audio> {
         //label, action are defined in BUTTONS array
         let files = Self::get_filenames_in_directory();
-/*
-        
-        let temp_ui = BUTTONS
-            .iter()
-            .fold(Column::new(), |col, (label, action)| {
-                col.push(button(*label).on_press(*action))
-            })
-            .push(progress_bar(0.0..=100.0, self.volume))
-            .push(text(
-                match &self.playback_sink {
-                    Some(sink) => sink.get_pos(),
-                    None => Duration::new(5, 0),
-                }
-                .as_secs(),
-            ))
-            //Get filenames and display as text
-            .push(files.iter().fold(Column::new(), |col, file| {
-                col.push(text(file.clone()))
-            })
-            )
-            .push(button("Dynamic button creator").on_press(AudioAction::ShowFiles))
-
-        ;//end of temp_ui
-*/
-        Column::new()
-            .push(button("Load Songs").on_press(AudioAction::ShowFiles))
-            .push(
-                self.files
-                    .iter()
-                    .fold(Column::new(), |column, filename| {
-                        column.push(button(filename.as_str()).on_press(AudioAction::Play(filename.clone())))
-                    }),
-            )
-            .into()
-        // temp_.into() 
+        self.files_as_buttons()
+            .push(button("load").on_press(Audio::ShowFiles)).into()
+            
     }
 
-    pub fn update(&mut self, message: AudioAction) -> Task<AudioAction> {
+    pub fn update(&mut self, message: Audio) -> Task<Audio> {
         match message {
-            AudioAction::LoadAudio => {
+            Audio::Load => {
                 self.load_audio();
                 Task::none()
-            }
-            AudioAction::Play(filename) => {
+            },
+            //TODO: Make Play work !
+            Audio::Play(filename) => {
                 println!("Playing: {}", filename);
                 Task::none()
-            }
-            AudioAction::TogglePlayPause => {
+            },
+            Audio::TogglePlayPause => {
                 if let Some(sink) = &self.playback_sink {
                     if sink.is_paused() {
                         sink.play();
@@ -130,25 +85,19 @@ impl AudioPlaybackController {
                     }
                 }
                 Task::none()
-            }
-            AudioAction::SliderPositionChanged(value) => {
+            },
+            Audio::SliderPositionChanged(value) => {
                 self.volume = value;
                 Task::none()
-            }
-            AudioAction::UpdatePlaybackPosition(value) => {
-                Task::none()
-            }
-            AudioAction::PlaybackTick => {
+            },
+            Audio::PlaybackTick => {
                 self.update_playback_position();
                 Task::none()
-            }
-            AudioAction::Test => {
-                println!("dynamic button creation works");
-                Task::none()
             },
-            AudioAction::ShowFiles => {
-                self.files = Self::get_filenames_in_directory().into_iter().map(Arc::new).collect();
-
+            //map(|filename| Arc::new(filename)) is just a more verbose way of map(Arc::new) to
+            //help me remember that its technically a closure
+            Audio::ShowFiles => {
+                self.files = Self::get_filenames_in_directory().into_iter().map(|filename| Arc::new(filename)).collect();
                 Task::none()
             },
             _ => {
@@ -158,9 +107,9 @@ impl AudioPlaybackController {
     }
 
     //TODO: Only track time when source is playing
-    pub fn subscription(&self) -> Subscription<AudioAction> {
+    pub fn subscription(&self) -> Subscription<Audio> {
         println!("x");
-        time::every(Duration::from_secs(1)).map(|_instant| AudioAction::PlaybackTick)
+        time::every(Duration::from_secs(1)).map(|_instant| Audio::PlaybackTick)
         // Update every second
     }
 
@@ -181,7 +130,7 @@ impl AudioPlaybackController {
 
     pub fn update_playback_position(&mut self) {
         if let Some(sink) = &self.playback_sink {
-            let _ = self.update(AudioAction::SliderPositionChanged(
+            let _ = self.update(Audio::SliderPositionChanged(
                 sink.get_pos().as_secs_f32(),
             ));
         }
@@ -205,5 +154,28 @@ impl AudioPlaybackController {
             .unwrap()
             .filter_map(|entry| entry.ok().and_then(|e| e.file_name().into_string().ok()))
             .collect()
+    }
+
+    //.push(progress_bar(0.0..=100.0, self.volume))
+    pub fn song_progress(&self) -> u64 {
+        
+        match &self.playback_sink {
+            Some(sink) => sink.get_pos(),
+            None => Duration::new(5, 0),
+        }
+            .as_secs()
+
+    }
+
+    pub fn files_as_buttons(&self) -> Column<Audio> {
+        let files = Column::new()
+            .push(
+                self.files
+                    .iter()
+                    .fold(Column::new(), |column, filename| {
+                        column.push(button(filename.as_str()).on_press(Audio::Play(filename.clone())))
+                    }),
+            );
+        files
     }
 }
