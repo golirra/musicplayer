@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //Represents the actions taken when a button is pressed
 use std::sync::Arc;
 #[derive(Clone, Debug)]
@@ -15,4 +16,9 @@ pub enum Audio {
     PlaybackTick,
     Test,
     ShowFiles,
+}
+
+pub enum File {
+    Load,
+    Display,
 }
