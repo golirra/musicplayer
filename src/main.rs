@@ -1,34 +1,19 @@
-mod audio;
-mod test;
-
-mod file;
-mod layout;
-mod utils;
+mod app;
 use iced::Theme;
 
-use crate::audio::AudioPlaybackController;
-
+use crate::app::state::state::AudioState;
+use crate::app::message::Audio;
 fn main() -> iced::Result {
 
     iced::application(
         "Test application",
-        AudioPlaybackController::update,
-        AudioPlaybackController::view,
+        AudioState::update,
+        AudioState::view,
     )
-    .subscription(AudioPlaybackController::subscription)
+    .subscription(AudioState::subscription)
     .resizable(false)
     .theme(|_| Theme::Light)
     .run()
 
-
-
-    /*
-    iced::application(
-        "Test application",
-        test::update,
-        test::view,
-    )
-    .run()
-*/
-
 }
+

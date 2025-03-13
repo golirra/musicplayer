@@ -1,24 +1,23 @@
 Gonna see if making a file like this helps my memory/recall of any work I've
 done for a later date
 -----------------------------------------------------------------------------------------------
+Iced expects you to split user interfaces into four different concepts:
+  State — the state of your application
+  Messages — user interactions or meaningful events that you care about
+  View logic — a way to display your state as widgets that may produce messages on user interaction
+  Update logic — a way to react to messages and update your state
+--------------------------------------------------------------------------------------------------
 possible UI components: (we're just copying foobar's functionality since I love it so much)
-    playback bar - play/pause/stop/etc.
-    volume slider
-    song progress
-    file/edit/view/playback dropdown menus
-    file list display - show albums/artists/whatever sorting
-    track metadata
-    "playlist" viewer
-
+  playback bar - play/pause/stop/etc.
+  volume slider
+  song progress
+  file/edit/view/playback dropdown menus
+  file list display - show albums/artists/whatever sorting
+  track metadata
+  "playlist" viewer
 -----------------------------------------------------------------------------------------------
 TODO:
 grab song/file metadata
 sort functionality by artists/albums alphabetically
 search bar for specific string in file
-
-IN PROGRESS:
-
-DONE:
-Try mapping over closure to make buttons
-
 
