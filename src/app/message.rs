@@ -34,4 +34,7 @@ pub enum File {
     Display,
 }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes

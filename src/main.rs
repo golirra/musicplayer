@@ -9,6 +9,9 @@ use crate::app::message::Audio;
 use crate::app::state::audio::AudioState; //TODO: change re-exports in app module for readability
 use crate::app::state::files::FileState;
 use crate::app::message::ControllerMessage;
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 fn main() -> iced::Result {
 
