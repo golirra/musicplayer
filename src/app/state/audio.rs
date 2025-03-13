@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 #![allow(dead_code, unused_imports)]
 use std::sync::Arc;
 use std::env;
@@ -8,7 +7,8 @@ use std::io::BufReader;
 use std::time::Duration;
 use std::vec;
 use tokio;
-use crate::Audio;
+use crate::app::message::Audio;
+use crate::app::view::playlist;
 
 
 use iced::time;
@@ -24,7 +24,6 @@ pub struct AudioState {
     current_position: f32,
     playback_sink: Option<Sink>,
     _audio_stream: Option<OutputStream>,
-    pub files: Vec<Arc<String>>,
 }
 
 impl AudioState {
@@ -34,7 +33,6 @@ impl AudioState {
             current_position: 0.0,
             playback_sink: None,
             _audio_stream: None,
-            files: vec![],
         }
     }
 
@@ -54,7 +52,6 @@ impl AudioState {
                 }
                 Task::none()
             },
-               
             _ => {Task::none()},
         }
     }
@@ -95,13 +92,5 @@ impl AudioState {
         }
     }
 
-    pub fn get_filenames_in_directory() -> Vec<String> {
-        fs::read_dir("./")
-            .unwrap()
-            .filter_map(|entry| entry.ok().and_then(|e| e.file_name().into_string().ok()))
-            .collect()
-    }
 }
 
-=======
->>>>>>> Stashed changes
