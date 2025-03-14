@@ -14,11 +14,11 @@
 - [ ] Write unit tests for the audio playback module
 
 ## Future Enhancements
-- [ ] Implement a dark mode for the UI
 - [ ] Add cross-platform support (Windows, macOS, Linux)
 
 ## Ideas
 - [ ] equalizer, visualizer?
+- [ ] themes
 
 
 _Last updated: 2025-03-14_
