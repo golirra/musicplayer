@@ -40,7 +40,7 @@ impl Controller {
 
     //NOTE:since self.audio.view() returns an Element<Audio> we can map over
     //self.audio.view() to wrap the Audio element in a Message::Audio variant
-    pub fn view(&self) -> Element<Message> {
+    pub fn view(&self) -> Element<Message>  {
         self.audio.view().map(|audio_msg| Message::Audio(audio_msg))
     }
     
@@ -60,7 +60,7 @@ impl Controller {
                 Task::none()
             },
             Message::Audio(audio_msg) => {
-                self.audio.update(audio_msg);
+                let _ = self.audio.update(audio_msg);
                 Task::none()
             },
             Message::File(_) => {
