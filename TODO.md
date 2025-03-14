@@ -3,7 +3,7 @@
 ## Features
 - [ ] Implement rym (rateyourmusic) api
 - [ ] Rest of playback_bar (next, prev, randnext)
-- [ ] 
+- [ ] Cache/save file list to persist across sessions (sql?)
 - [ ] Implement playlist functionality
 
 ## Bug Fixes
