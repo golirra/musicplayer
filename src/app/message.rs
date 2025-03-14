@@ -19,8 +19,15 @@ pub enum Audio {
     ShowFiles,
 }
 
+#[derive(Clone, Debug)]
 pub enum File {
     Load,
     Display,
     Duration,
+}
+
+#[derive(Clone, Debug)]
+pub enum Message {
+    Audio(Audio),
+    File(File),
 }
