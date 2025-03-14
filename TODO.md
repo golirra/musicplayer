@@ -9,6 +9,7 @@
 ## Bug Fixes
 
 ## Improvements
+- [ ] Make layout not suck
 
 ## Testing
 - [ ] Write unit tests for the audio playback module
