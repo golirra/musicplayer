@@ -7,3 +7,5 @@ edition = "2021"
 iced = { version = "0.13.1", features = ["tokio"] }
 rodio = { git = "https://github.com/RustAudio/rodio.git", features = ["symphonia", "symphonia-mp3"] }
 tokio = { version = "1.44.0", features = ["full"] }
+rusqlite = { version = "0.34.0", features = ["bundled"] }
+anyhow = { version = "1.0" }
