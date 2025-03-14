@@ -25,6 +25,9 @@ impl FileState {
                 //TODO:
                 Task::none()
             },
+            File::Duration => {
+                Task::none()
+            },
             _ => {Task::none()},
         }
     }

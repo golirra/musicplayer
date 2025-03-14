@@ -1,5 +1,5 @@
 mod app;
-use iced::{Theme, Element, Task};
+use iced::{Theme, Element, Task, Subscription};
 use iced::widget::{button, Column};
 
 
@@ -13,7 +13,7 @@ fn main() -> iced::Result {
         Controller::update,
         Controller::view,
     )
-    //.subscription(AudioState::subscription)
+    .subscription(Controller::subscription)
     .resizable(false)
     .theme(|_| Theme::Light)
     .run()
@@ -46,10 +46,25 @@ impl Controller {
                 println!("Test works");
                 Task::none()
             },
+            Audio::PlaybackTick => {
+                self.audio.update_playback_position();
+                Task::none()
+            },
+            Audio::Duration => {
+                dbg!(self.audio.song_duration());
+                dbg!("in main::Duration");
+                Task::none()
+
+            },
+
             _ => {
                 self.audio.update(message)
             },
         }
+    }
+
+    pub fn subscription(&self) -> Subscription<Audio> {
+        self.audio.subscription()
     }
 
 
