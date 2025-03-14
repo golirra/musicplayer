@@ -2,6 +2,7 @@
 use std::fs;
 use iced::{Task};
 use crate::app::message::File;
+use crate::Message;
 
 #[derive(Default)]
 pub struct FileState {
@@ -15,7 +16,7 @@ impl FileState {
         }
     }
 
-    pub fn update(&mut self, message: File) -> Task<File> {
+    pub fn update(&mut self, message: File) -> Task<Message> {
         match message {
             File::Load => {
                 //TODO:

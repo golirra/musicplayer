@@ -1,3 +1,4 @@
+#![allow(unused_imports, unused_braces, dead_code)]
 mod app;
 use iced::{Theme, Element, Task, Subscription};
 use iced::widget::{button, Column};
@@ -5,6 +6,7 @@ use iced::widget::{button, Column};
 
 use crate::app::state::audio::AudioState; //TODO: change re-exports in app module for readability
 use crate::app::message::Audio;
+use crate::app::message::Message;
 use crate::app::state::files::FileState;
 fn main() -> iced::Result {
 
@@ -36,35 +38,40 @@ impl Controller {
         }
     }
 
-    pub fn view(&self) -> Element<Audio> {
-        self.audio.view()
+    //NOTE:since self.audio.view() returns an Element<Audio> we can map over
+    //self.audio.view() to wrap the Audio element in a Message::Audio variant
+    pub fn view(&self) -> Element<Message> {
+        self.audio.view().map(|audio_msg| Message::Audio(audio_msg))
     }
     
-    pub fn update(&mut self, message: Audio) -> Task<Audio> {
+    pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Audio::Test => {
+            Message::Audio(Audio::Test) => {
                 println!("Test works");
                 Task::none()
             },
-            Audio::PlaybackTick => {
+            Message::Audio(Audio::PlaybackTick) => {
                 self.audio.update_playback_position();
                 Task::none()
             },
-            Audio::Duration => {
+            Message::Audio(Audio::Duration) => {
                 dbg!(self.audio.song_duration());
                 dbg!("in main::Duration");
                 Task::none()
-
             },
-
-            _ => {
-                self.audio.update(message)
+            Message::Audio(audio_msg) => {
+                self.audio.update(audio_msg);
+                Task::none()
+            },
+            Message::File(_) => {
+                Task::none()
             },
         }
     }
 
-    pub fn subscription(&self) -> Subscription<Audio> {
-        self.audio.subscription()
+    pub fn subscription(&self) -> Subscription<Message> {
+        // self.audio.subscription()
+        self.audio.subscription().map(|audio_msg| Message::Audio(audio_msg))
     }
 
 

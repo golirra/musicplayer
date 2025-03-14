@@ -1,6 +1,7 @@
 #![allow(dead_code, unused_imports)]
 use std::sync::Arc;
 use std::env;
+use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::fs;
 use std::io::BufReader;
@@ -9,6 +10,7 @@ use std::vec;
 use tokio;
 use crate::Audio;
 use crate::app::view::playlist;
+use crate::Message;
 
 
 use iced::time;
@@ -41,7 +43,8 @@ impl AudioState {
     pub fn update(&mut self, message: Audio) -> Task<Audio> {
         match message {
             Audio::Load => {
-                self.load_audio("C:/Users/webbs/programming/cs/rust/musicplayer/src/app/state/song2.flac");
+                //NOTE: use let _ to ignore the resulting value. not sure what the point is though
+                let _ = self.load_audio("C:/Users/webbs/programming/cs/rust/musicplayer/src/app/state/song.mp3");
                 Task::none()
             },
             Audio::TogglePlayPause => {
@@ -54,14 +57,13 @@ impl AudioState {
                 }
                 Task::none()
             },
+            //NOTE: a playback tick is defined by the subscription function which passively listens
+            // to an event and does something
             Audio::PlaybackTick => {
                 self.update_playback_position();
                 Task::none()
             },
             Audio::Duration => {
-                
-
-                
                 dbg!("{}", self.song_length);
                 Task::none()
             },
@@ -79,22 +81,23 @@ impl AudioState {
     }
 
     //TODO: Make file_path not hardcoded 
-    pub fn load_audio(&mut self, file_path: &str) {
-        if self.playback_sink.is_none() {
-            let (stream, stream_handle) = OutputStream::try_default().unwrap();
-            let sink = Sink::try_new(&stream_handle).unwrap();
-            let file = BufReader::new(fs::File::open(file_path).unwrap());
-            let source = Decoder::new(file).unwrap();
-            dbg!(source.current_frame_len());
-
-
-            sink.append(source);
-            sink.set_volume(0.2);
-
-            self._audio_stream = Some(stream);
-            self.playback_sink = Some(sink);
+    pub fn load_audio(&mut self, file_path: &str) -> Result<(), Box<dyn Error>> {
+        let stream_handle = rodio::OutputStreamBuilder::open_default_stream()?;
+        let sink = rodio::Sink::connect_new(&stream_handle.mixer());
+        let file = fs::File::open(file_path)?;
+        let decoder = rodio::Decoder::try_from(file)?;
+        match decoder.total_duration() {
+            Some(duration) => self.song_length = Some(duration),
+            None => eprintln!("Warning: unable to determine song duration."),
         }
-        
+
+        sink.append(decoder);
+        sink.set_volume(0.2);
+
+        self._audio_stream = Some(stream_handle);
+        self.playback_sink = Some(sink);
+
+        Ok(())
     }
 
     pub fn update_playback_position(&mut self) {

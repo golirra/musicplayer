@@ -1,3 +1,4 @@
+#![allow(unused_imports, unused_braces)]
 use iced::{Element};
 use iced::widget::{button, text, Column, Row, Button, progress_bar};
 use crate::app::state::audio::AudioState; // Reference the state controller
@@ -19,11 +20,10 @@ impl AudioState {
     pub fn view(&self) -> Element<Audio> {
         Column::new()
             .push(Self::playback_controls())
-            .push(progress_bar(0.0..=1.0, self.current_pos))
+            .push(progress_bar(0.0..=self.song_duration(), self.current_pos))
             .push(button("Song duration").on_press(Audio::Duration))
             .into()
     }
-
 
     pub fn playback_controls() -> Row<'static, Audio> { 
         let playback_controls = BUTTONS
@@ -33,8 +33,4 @@ impl AudioState {
             });
         playback_controls.into()
     }
-
-
-
-
 }

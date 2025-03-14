@@ -1,5 +1,6 @@
 #![allow(dead_code, unused_imports)]
 use std::sync::Arc;
+use std::error::Error;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::fs;
@@ -66,19 +67,19 @@ impl AudioState {
     }
 
     //TODO: Make file_path not hardcoded 
-    pub fn load_audio(&mut self, file_path: &str) {
-        if self.playback_sink.is_none() {
-            let (stream, stream_handle) = OutputStream::try_default().unwrap();
-            let sink = Sink::try_new(&stream_handle).unwrap();
-            let file = BufReader::new(fs::File::open(file_path).unwrap());
-            let source = Decoder::new(file).unwrap();
+    pub fn load_audio(&mut self, file_path: &str) -> Result<(), Box<dyn Error>> {
+        let stream_handle = rodio::OutputStreamBuilder::open_default_stream()?;
+        let sink = rodio::Sink::connect_new(&stream_handle.mixer());
+        let file = fs::File::open("song.mp3")?;
 
-            sink.append(source);
-            sink.set_volume(0.2);
+        sink.append(rodio::Decoder::try_from(file)?);
 
-            self._audio_stream = Some(stream);
-            self.playback_sink = Some(sink);
-        }
+        sink.set_volume(0.2);
+
+        self._audio_stream = Some(stream_handle);
+        self.playback_sink = Some(sink);
+
+        Ok(())
     }
 
     pub fn update_playback_position(&mut self) {
