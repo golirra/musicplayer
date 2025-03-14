@@ -2,6 +2,8 @@
 mod app;
 use iced::{Theme, Element, Task, Subscription};
 use iced::widget::{button, Column};
+use anyhow::Result;
+
 
 
 use crate::app::state::audio::AudioState; //TODO: change re-exports in app module for readability
