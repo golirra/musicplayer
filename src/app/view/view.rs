@@ -1,5 +1,5 @@
 use iced::{Element};
-use iced::widget::{button, Column, Row, Button};
+use iced::widget::{button, text, Column, Row, Button, progress_bar};
 use crate::app::state::audio::AudioState; // Reference the state controller
 use crate::app::message::Audio;
 use crate::app::view::playlist;
@@ -19,8 +19,9 @@ impl AudioState {
     pub fn view(&self) -> Element<Audio> {
         Column::new()
             .push(Self::playback_controls())
+            .push(progress_bar(0.0..=1.0, self.current_pos))
+            .push(button("Song duration").on_press(Audio::Duration))
             .into()
-
     }
 
 
@@ -32,5 +33,8 @@ impl AudioState {
             });
         playback_controls.into()
     }
+
+
+
 
 }

@@ -11,6 +11,7 @@ pub enum Audio {
     Previous,
     Next,
     RandomNextTrack,
+    Duration,
     SliderPositionChanged(f32),
     UpdatePlaybackPosition(f32),
     PlaybackTick,
@@ -21,4 +22,5 @@ pub enum Audio {
 pub enum File {
     Load,
     Display,
+    Duration,
 }
