@@ -9,8 +9,11 @@ use std::time::Duration;
 use std::vec;
 use tokio;
 use crate::Audio;
-use crate::app::view::playlist;
 use crate::Message;
+use crate::app::view::playlist;
+use crate::app::state::db::database;
+
+use rusqlite::Connection;
 
 
 use iced::time;
@@ -99,7 +102,14 @@ impl AudioState {
 
         Ok(())
     }
+    // Function to load audio using the song name from the database
+    pub fn load_audio_from_db(&mut self, conn: &Connection, song_name: &str) -> Result<(), Box<dyn Error>> {
+        // Get the file path from the database
+        let song_path = database::get_song_path(conn, song_name)?;
 
+        // Use the load_audio function to load the song
+        self.load_audio(&song_path)
+    }
     pub fn update_playback_position(&mut self) {
         if let Some(sink) = &self.playback_sink {
             self.current_pos = sink.get_pos().as_secs_f32();
