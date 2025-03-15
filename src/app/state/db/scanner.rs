@@ -46,6 +46,17 @@ fn scan_directory(conn: &Connection, dir: &Path, parent_id: Option<i32>) -> Resu
     Ok(())
 }
 
+fn read_table(conn: &Connection){
+    let x = conn.execute(
+        "SELECT * FROM files LIMIT 1",
+        params![]
+    );
+    dbg!(x);
+}
+
+
+
+
 fn main() -> Result<()> {
     let conn = Connection::open("music_library.db")?;
     let test_folder = Path::new("Music");
