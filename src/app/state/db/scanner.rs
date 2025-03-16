@@ -1,10 +1,34 @@
-//Scan a file system and add all pieces to a sqlite database
+//Scan a file system and add their metadata to a sqlite database
 use std::fs;
+use rusqlite::{ToSql, types::ToSqlOutput};
+use serde::{Serialize, Deserialize};
 use std::path::Path;
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, Row};
 use anyhow::Result;
+use rusqlite::types::Type;
+use rodio::Decoder;
+use id3::{Tag as Tagg, Error as TE, TagLike, partial_tag_ok, no_tag_ok};
 
-fn scan_directory(conn: &Connection, dir: &Path, parent_id: Option<i32>) -> Result<()> {
+const MUSIC_FOLDER: &str = "C:/Users/webbs/programming/cs/rust/Rust-playground/src/Music";
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Metadata {
+    title: String,
+    album: String,
+    artist: String,
+    genre: String,
+    year: String,
+}
+
+impl ToSql for Metadata {
+    fn to_sql(&self) -> Result<ToSqlOutput, rusqlite::Error> {
+        serde_json::to_string(self)
+            .map(ToSqlOutput::from)
+            .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))
+    }
+}
+
+pub fn scan_directory(conn: &Connection, dir: &Path, parent_id: Option<i32>) -> Result<()> {
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
         let path = entry.path();
@@ -35,6 +59,21 @@ fn scan_directory(conn: &Connection, dir: &Path, parent_id: Option<i32>) -> Resu
 
             // Recurse to scan the contents of this directory
             scan_directory(conn, &path, Some(last_id))?;
+        } else if attribs == 32 { //32 == Song file
+            let tg = Tagg::read_from_path(&path)?;
+            let md = Metadata {
+                title: tg.title().unwrap().to_string(),
+                album: tg.album().unwrap().to_string(),
+                artist: tg.artist().unwrap().to_string(),
+                genre: tg.genre().unwrap().to_string(),
+                year: tg.year().unwrap().to_string(),
+            };
+                conn.execute(
+                "INSERT INTO files (parentId, name, attribs, path, md)
+                VALUES (?, ?, ?, ?, ?)",
+                params![parent_id, name, attribs, path.to_string_lossy(), md],
+            )?;
+
         } else {
             // If it's a file, insert it with the parentId
             conn.execute(
@@ -46,16 +85,59 @@ fn scan_directory(conn: &Connection, dir: &Path, parent_id: Option<i32>) -> Resu
     Ok(())
 }
 
-fn read_table(conn: &Connection){
-    let x = conn.execute(
-        "SELECT * FROM files LIMIT 1",
-        params![]
-    );
-    dbg!(x);
+#[derive(Debug)]
+pub struct File {
+    id: usize,
+    parentId: usize,
+    name: String,
+    attribs: usize,
+    //path: String,
 }
 
+impl File {
+    fn deserialize(row: &Row) -> Result<File, rusqlite::Error>{
+        Ok(
+            File {
+                id: row.get(0)?,
+                parentId: row.get(1)?,
+                name: row.get(2)?,
+                attribs: row.get(3)?,
+                //path: row.get(4)?,
+            }
+        )
+    }
+}
 
+fn read_table(conn: &Connection) -> Result<()> {
+    let mut x = conn.prepare("SELECT id, parentId, name, attribs FROM files LIMIT 1")?;
+    let fi = x.query_map([], File::deserialize)?;
+    dbg!(fi.collect::<Vec<_>>().pop()); 
+    Ok(())
+}
 
+pub fn setup_database() -> Result<()> {
+    let db_path = "music_library.db";
+    let music_path = Path::new(MUSIC_FOLDER);
+    //If db exists destroy it
+    if fs::metadata(db_path).is_ok() {
+        fs::remove_file(db_path)?;
+    }
+    let conn = Connection::open(db_path)?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS files (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            parentId INTEGER,
+            name TEXT NOT NULL,
+            attribs INTEGER,
+            path TEXT NOT NULL,
+            md TEXT
+        )",
+        [],
+    )?;
+    scan_directory(&conn, music_path, Some(0))?;
+    Ok(())
+}
 
 fn main() -> Result<()> {
     let conn = Connection::open("music_library.db")?;
