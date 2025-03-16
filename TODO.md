@@ -1,12 +1,13 @@
 # Project To-Do / Planning
 
 ## Features
-- [x] Implement rym (rateyourmusic) api
+- [ ] Implement rym (rateyourmusic) api
 - [ ] Rest of playback_bar (next, prev, randnext)
 - [ ] Cache/save file list to persist across sessions (sql?)
 - [ ] Implement playlist functionality
 
 ## Bug Fixes
+- [x] Song duration doesn't work
 
 ## Improvements
 - [ ] Make layout not suck
