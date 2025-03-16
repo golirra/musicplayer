@@ -22,6 +22,7 @@ use iced::widget::{Button, Column, Container};
 use iced::{Subscription, Renderer, Theme, Element, Task, Fill};
 
 use rodio::{Decoder, OutputStream, Sink, Source};
+const TEST_SONG: &str = "C:/Users/webbs/programming/cs/rust/musicplayer/src/app/state/song.mp3";
 
 #[derive(Default)]
 pub struct AudioState {
@@ -47,7 +48,7 @@ impl AudioState {
         match message {
             Audio::Load => {
                 //NOTE: use let _ to ignore the resulting value. not sure what the point is though
-                let _ = self.load_audio("C:/Users/webbs/programming/cs/rust/musicplayer/src/app/state/song.mp3");
+                let _ = self.load_audio(TEST_SONG);
                 Task::none()
             },
             Audio::TogglePlayPause => {
