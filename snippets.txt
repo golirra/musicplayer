@@ -7,3 +7,27 @@ Stuff I want to save for the future to remember
       col.push(text(file.clone()))
       })
     )
+------------------------
+let mut probed = symphonia::default::get_probe().format(&hint, mss, &fmt_opts, &meta_opts)
+.expect("unsupported format");
+~~~This doesn't work: ~~~~~
+if let Some(x) = probed.format.metadata().current() {
+  dbg!(x.tags());
+} else {
+  println!("nope");
+}
+~~~This does: ~~~~~
+if let Some(metadata_rev) = probed.metadata.get().as_ref().and_then(|m| m.current()) {
+  dbg!("2nd tags", metadata_rev.tags());
+}
+since .get() returns an Option<Metadata>, we need to deal with it. so we use
+as_ref() to get a reference to the object, Option<&Metadata>, and_then() is used
+for dealing with options, returns None if the option is None, otherwise calls
+the closure. So we can use .current() inside the closure, and then finally we
+can use .tags()
+
+~~~Also doesn't work: ~~~~
+let md = probed.format.metadata();
+// dbg!(md.current());
+// dbg!(probed.metadata);
+-------------------------------------------------------------------------------------------
