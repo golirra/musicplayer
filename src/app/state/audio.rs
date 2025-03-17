@@ -31,6 +31,7 @@ pub struct AudioState {
     pub current_pos: f32,
     playback_sink: Option<Sink>,
     _audio_stream: Option<OutputStream>,
+    pub files: Vec<Arc<String>>,
 }
 
 impl AudioState {
@@ -41,6 +42,7 @@ impl AudioState {
             current_pos: 0.0,
             playback_sink: None,
             _audio_stream: None,
+            files: vec![],
         }
     }
 
@@ -69,6 +71,10 @@ impl AudioState {
             },
             Audio::Duration => {
                 dbg!("{}", self.song_length);
+                Task::none()
+            },
+            Audio::ShowFiles => {
+                self.files = playlist::Playlist::get_filenames_in_directory().into_iter().map(Arc::new).collect();
                 Task::none()
             },
 
@@ -128,6 +134,19 @@ impl AudioState {
             None => 0,
         }
     }
-
+    pub fn get_filenames_in_directory() -> Vec<String> {
+        fs::read_dir("./")
+            .unwrap()
+            .filter_map(|entry| entry.ok().and_then(|e| e.file_name().into_string().ok()))
+            .collect()
+    }
+    pub fn files_as_buttons(&self) -> Column<Audio> {
+         self.files
+            .iter()
+            .fold(Column::new(), |column, filename| {
+                column.push(button(filename.as_str()).on_press(Audio::Play(filename.clone())))
+            })
+               
+    }
 }
 

@@ -22,6 +22,8 @@ impl AudioState {
             .push(Self::playback_controls())
             .push(progress_bar(0.0..=self.song_duration(), self.current_pos))
             .push(button("Song duration").on_press(Audio::Duration))
+            .push(button("Load files").on_press(Audio::ShowFiles))
+            .push(self.files_as_buttons())
             .into()
     }
 
