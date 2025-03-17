@@ -11,7 +11,7 @@ use tokio;
 use crate::Audio;
 use crate::Message;
 use crate::app::view::playlist;
-use crate::app::state::db::database;
+use crate::app::state::db::scanner;
 
 use rusqlite::Connection;
 
@@ -73,8 +73,9 @@ impl AudioState {
                 dbg!("{}", self.song_length);
                 Task::none()
             },
-            Audio::ShowFiles => {
-                self.files = playlist::Playlist::get_filenames_in_directory().into_iter().map(Arc::new).collect();
+            Audio::ShowFiles => {//TODO: separate concerns of audio and playlist better
+                // self.files = playlist::Playlist::get_filenames_in_directory().into_iter().map(Arc::new).collect();
+                self.files = scanner::read_table().unwrap().into_iter().map(Arc::new).collect();
                 Task::none()
             },
 
@@ -110,12 +111,14 @@ impl AudioState {
         Ok(())
     }
     // Function to load audio using the song name from the database
+    //TODO: 
     pub fn load_audio_from_db(&mut self, conn: &Connection, song_name: &str) -> Result<(), Box<dyn Error>> {
+        todo!();
         // Get the file path from the database
-        let song_path = database::get_song_path(conn, song_name)?;
+        // let song_path = database::get_song_path(conn, song_name)?;
 
         // Use the load_audio function to load the song
-        self.load_audio(&song_path)
+        // self.load_audio(&song_path)
     }
     pub fn update_playback_position(&mut self) {
         if let Some(sink) = &self.playback_sink {
