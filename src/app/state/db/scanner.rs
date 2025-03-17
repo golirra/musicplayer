@@ -108,11 +108,21 @@ impl File {
     }
 }
 
-fn read_table(conn: &Connection) -> Result<()> {
-    let mut x = conn.prepare("SELECT id, parentId, name, attribs FROM files LIMIT 1")?;
-    let fi = x.query_map([], File::deserialize)?;
-    dbg!(fi.collect::<Vec<_>>().pop()); 
-    Ok(())
+pub fn read_table() -> Result<Vec<String>> {
+    let db_path = "C:/Users/webbs/programming/cs/rust/musicplayer/src/music_library.db";
+    let conn = Connection::open(db_path)?;
+
+    let mut stmt = conn.prepare("SELECT path FROM files WHERE attribs == 32")?;
+    let rows = stmt.query_map([], |row| row.get(0))?;
+    let mut paths = Vec::new();
+    for row_result in rows {
+        paths.push(row_result?);
+    }
+    dbg!(&paths);
+
+    //let fi = x.query_map([],|row| row.get(0) )?;
+    //dbg!(fi.collect::<Vec<_>>().pop()); 
+    Ok(paths)
 }
 
 pub fn setup_database() -> Result<()> {
