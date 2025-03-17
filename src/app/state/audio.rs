@@ -53,6 +53,11 @@ impl AudioState {
                 let _ = self.load_audio(TEST_SONG);
                 Task::none()
             },
+            Audio::Play(file) => {
+                self.load_audio(&file);
+                Task::none()
+            },
+
             Audio::TogglePlayPause => {
                 if let Some(sink) = &self.playback_sink {
                     if sink.is_paused() {
