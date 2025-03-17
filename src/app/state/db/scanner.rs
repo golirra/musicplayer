@@ -85,6 +85,27 @@ pub fn scan_directory(conn: &Connection, dir: &Path, parent_id: Option<i32>) -> 
     Ok(())
 }
 
+pub fn gt() -> Result<()> {
+    let db_path = "C:/Users/webbs/programming/cs/rust/musicplayer/src/music_library.db";
+    let conn = Connection::open(db_path)?;
+    let mut stmt = conn.prepare(
+        "SELECT json_extract(md, '$.title') AS title 
+        FROM files 
+        WHERE attribs == 32
+        ORDER BY artist")?;
+    
+    let rows = stmt.query_map([], |row| {
+        let title: Option<String> = row.get(0)?;
+        Ok(title.unwrap_or("Unknown Title".to_string()))
+    })?;
+
+    for row in rows {
+        println!("Title: {}", row?);
+    }
+
+    Ok(())
+}
+
 #[derive(Debug)]
 pub struct File {
     id: usize,
