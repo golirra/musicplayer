@@ -1,7 +1,7 @@
 # Project To-Do / Planning
 
 ## Features
-- [ ] Implement rym (rateyourmusic) api
+- [ ] rym (rateyourmusic) api
 - [ ] Rest of playback_bar (next, prev, randnext)
 - [ ] Cache/save file list to persist across sessions (sql?)
 - [ ] Implement playlist functionality
@@ -21,6 +21,7 @@
 ## Ideas
 - [ ] equalizer, visualizer?
 - [ ] themes
+- [ ] dsp? (maybe too far out of scope of original idea)
 
 
 _Last updated: 2025-03-14_
