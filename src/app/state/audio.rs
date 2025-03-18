@@ -4,7 +4,7 @@ use std::env;
 use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::fs;
-use std::io::BufReader;
+use std::io::{BufReader, Error as ioError};
 use std::time::Duration;
 use std::vec;
 use tokio;
@@ -23,6 +23,18 @@ use iced::{Subscription, Renderer, Theme, Element, Task, Fill};
 
 use rodio::{Decoder, OutputStream, Sink, Source};
 const TEST_SONG: &str = "C:/Users/webbs/programming/cs/rust/musicplayer/src/app/state/song.mp3";
+
+#[derive(Debug)]
+pub enum AudioError {
+    NoAudioPlaying,
+    PlayError(rodio::PlayError),
+}
+
+impl From<rodio::PlayError> for AudioError {
+    fn from(err: rodio::PlayError) -> Self {
+        AudioError::PlayError(err)
+    }
+}
 
 #[derive(Default)]
 pub struct AudioState {
@@ -53,6 +65,11 @@ impl AudioState {
                 let _ = self.load_audio(TEST_SONG);
                 Task::none()
             },
+            Audio::Stop => {
+                self.stop_audio();
+                
+                Task::none()
+            },
             Audio::Play(file) => {
                 self.load_audio(&file);
                 Task::none()
@@ -78,13 +95,12 @@ impl AudioState {
                 dbg!("{}", self.song_length);
                 Task::none()
             },
-            Audio::ShowFiles => {//TODO: separate concerns of audio and playlist better
+            //TODO:
+            Audio::ShowFiles => {
                 // self.files = playlist::Playlist::get_filenames_in_directory().into_iter().map(Arc::new).collect();
                 self.files = scanner::read_table().unwrap().into_iter().map(Arc::new).collect();
                 Task::none()
             },
-
-
             _ => {Task::none()},
         }
     }
@@ -96,7 +112,6 @@ impl AudioState {
         // Update every second
     }
 
-    //TODO: Make file_path not hardcoded 
     pub fn load_audio(&mut self, file_path: &str) -> Result<(), Box<dyn Error>> {
         let stream_handle = rodio::OutputStreamBuilder::open_default_stream()?;
         let sink = rodio::Sink::connect_new(&stream_handle.mixer());
@@ -114,6 +129,14 @@ impl AudioState {
         self.playback_sink = Some(sink);
 
         Ok(())
+    }
+    fn stop_audio(&mut self) -> Result<(), AudioError>   {
+        if let Some(sink) = &self.playback_sink {
+            sink.stop();
+            Ok(())
+        } else {
+            Err(AudioError::NoAudioPlaying)
+        }
     }
     // Function to load audio using the song name from the database
     //TODO: 
@@ -136,18 +159,13 @@ impl AudioState {
             .unwrap_or(0.0)
     }
 
-    pub fn song_progress(&self) -> u64 {
-        match &self.playback_sink {
-            Some(sink) => sink.get_pos().as_secs(),
-            None => 0,
-        }
-    }
     pub fn get_filenames_in_directory() -> Vec<String> {
         fs::read_dir("./")
             .unwrap()
             .filter_map(|entry| entry.ok().and_then(|e| e.file_name().into_string().ok()))
             .collect()
     }
+    //TODO: Format button names properly
     pub fn files_as_buttons(&self) -> Column<Audio> {
          self.files
             .iter()
