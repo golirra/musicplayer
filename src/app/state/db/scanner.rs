@@ -9,7 +9,8 @@ use rusqlite::types::Type;
 use rodio::Decoder;
 use id3::{Tag as Tagg, Error as TE, TagLike, partial_tag_ok, no_tag_ok};
 
-const MUSIC_FOLDER: &str = "C:/Users/webbs/programming/cs/rust/Rust-playground/src/Music";
+const MUSIC_FOLDER: &str = "C:/Users/webbs/programming/cs/rust/musicplayer/src/Music";
+const DB_PATH: &str = "C:/Users/webbs/programming/cs/rust/musicplayer/src/music_library.db";
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Metadata {
@@ -43,6 +44,7 @@ pub fn scan_directory(conn: &Connection, dir: &Path, parent_id: Option<i32>) -> 
         } else if name.ends_with(".jpg") || name.ends_with(".png") {
             38 // Album art
         } else {
+            println!("unknown files");
             continue; // Skip unknown files
         };
 
@@ -66,7 +68,9 @@ pub fn scan_directory(conn: &Connection, dir: &Path, parent_id: Option<i32>) -> 
                 album: tg.album().unwrap().to_string(),
                 artist: tg.artist().unwrap().to_string(),
                 genre: tg.genre().unwrap().to_string(),
-                year: tg.year().unwrap().to_string(),
+                year: tg.year()
+                    .map(|y| y.to_string())
+                    .unwrap_or("Unknown year".to_string()),
             };
                 conn.execute(
                 "INSERT INTO files (parentId, name, attribs, path, md)
@@ -85,8 +89,8 @@ pub fn scan_directory(conn: &Connection, dir: &Path, parent_id: Option<i32>) -> 
     Ok(())
 }
 
-pub fn gt() -> Result<()> {
-    let db_path = "C:/Users/webbs/programming/cs/rust/musicplayer/src/music_library.db";
+pub fn get_title() -> Result<()> {
+    let db_path = Path::new(DB_PATH);
     let conn = Connection::open(db_path)?;
     let mut stmt = conn.prepare(
         "SELECT json_extract(md, '$.title') AS title 
@@ -130,7 +134,7 @@ impl File {
 }
 
 pub fn read_table() -> Result<Vec<String>> {
-    let db_path = "C:/Users/webbs/programming/cs/rust/musicplayer/src/music_library.db";
+    let db_path = Path::new(DB_PATH);
     let conn = Connection::open(db_path)?;
 
     let mut stmt = conn.prepare("SELECT path FROM files WHERE attribs == 32")?;
@@ -147,7 +151,7 @@ pub fn read_table() -> Result<Vec<String>> {
 }
 
 pub fn setup_database() -> Result<()> {
-    let db_path = "music_library.db";
+    let db_path = Path::new(DB_PATH);
     let music_path = Path::new(MUSIC_FOLDER);
     //If db exists destroy it
     if fs::metadata(db_path).is_ok() {
@@ -169,7 +173,7 @@ pub fn setup_database() -> Result<()> {
     scan_directory(&conn, music_path, Some(0))?;
     Ok(())
 }
-
+/*
 fn main() -> Result<()> {
     let conn = Connection::open("music_library.db")?;
     let test_folder = Path::new("Music");
@@ -179,3 +183,4 @@ fn main() -> Result<()> {
 
     Ok(())
 }
+*/
