@@ -67,7 +67,7 @@ impl AudioState {
             },
             Audio::Stop => {
                 self.stop_audio();
-                
+                self.current_pos = 0.0; 
                 Task::none()
             },
             Audio::Play(file) => {
@@ -105,10 +105,9 @@ impl AudioState {
         }
     }
 
-    //TODO: Only track time when source is playing
     pub fn subscription(&self) -> Subscription<Audio> {
         println!("x");
-        time::every(Duration::from_secs(1)).map(|_instant| Audio::PlaybackTick)
+        time::every(Duration::from_millis(500)).map(|_instant| Audio::PlaybackTick)
         // Update every second
     }
 
@@ -151,7 +150,10 @@ impl AudioState {
     pub fn update_playback_position(&mut self) {
         if let Some(sink) = &self.playback_sink {
             self.current_pos = sink.get_pos().as_secs_f32();
+        } else {
+            self.current_pos = 0.0;
         }
+        
     }
 
     pub fn song_duration(&self) -> f32 {
