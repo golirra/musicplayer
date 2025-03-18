@@ -2,3 +2,4 @@ target/
 debug/
 cargo.lock
 src/music_library.db
+/src/Music
