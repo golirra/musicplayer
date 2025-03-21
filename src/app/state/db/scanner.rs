@@ -12,6 +12,29 @@ use id3::{Tag as Tagg, Error as TE, TagLike, partial_tag_ok, no_tag_ok};
 const MUSIC_FOLDER: &str = "C:/Users/webbs/programming/cs/rust/musicplayer/src/Music";
 const DB_PATH: &str = "C:/Users/webbs/programming/cs/rust/musicplayer/src/music_library.db";
 
+#[derive(Debug)]
+pub struct File {
+    id: usize,
+    parentId: usize,
+    name: String,
+    attribs: usize,
+    //path: String,
+}
+
+impl File {
+    fn deserialize(row: &Row) -> Result<File, rusqlite::Error>{
+        Ok(
+            File {
+                id: row.get(0)?,
+                parentId: row.get(1)?,
+                name: row.get(2)?,
+                attribs: row.get(3)?,
+                //path: row.get(4)?,
+            }
+        )
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Metadata {
     title: String,
@@ -89,6 +112,27 @@ pub fn scan_directory(conn: &Connection, dir: &Path, parent_id: Option<i32>) -> 
     Ok(())
 }
 
+pub fn get_artist() -> Result<()> {
+    let db_path = Path::new(DB_PATH);
+    let conn = Connection::open(db_path)?;
+    let mut stmt = conn.prepare( 
+        "SELECT DISTINCT json_extract(md, '$.artist') AS artist 
+        FROM files 
+        WHERE attribs == 32
+        ORDER BY artist")?;
+
+    let rows = stmt.query_map([], |row| {
+        let title: Option<String> = row.get(0)?;
+        Ok(title.unwrap_or("Unknown Artist".to_string()))
+    })?;
+
+    for row in rows {
+        println!("Artist: {}", row?);
+    }
+
+    Ok(())
+}
+
 pub fn get_title() -> Result<()> {
     let db_path = Path::new(DB_PATH);
     let conn = Connection::open(db_path)?;
@@ -110,28 +154,6 @@ pub fn get_title() -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug)]
-pub struct File {
-    id: usize,
-    parentId: usize,
-    name: String,
-    attribs: usize,
-    //path: String,
-}
-
-impl File {
-    fn deserialize(row: &Row) -> Result<File, rusqlite::Error>{
-        Ok(
-            File {
-                id: row.get(0)?,
-                parentId: row.get(1)?,
-                name: row.get(2)?,
-                attribs: row.get(3)?,
-                //path: row.get(4)?,
-            }
-        )
-    }
-}
 
 pub fn read_table() -> Result<Vec<String>> {
     let db_path = Path::new(DB_PATH);
@@ -143,7 +165,6 @@ pub fn read_table() -> Result<Vec<String>> {
     for row_result in rows {
         paths.push(row_result?);
     }
-    dbg!(&paths);
 
     //let fi = x.query_map([],|row| row.get(0) )?;
     //dbg!(fi.collect::<Vec<_>>().pop()); 
