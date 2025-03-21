@@ -8,7 +8,7 @@ pub enum Audio {
     Stop,
     TogglePlayPause,
     Pause,
-    Previous,
+    Prev,
     Next,
     RandomNextTrack,
     Duration,
@@ -27,7 +27,14 @@ pub enum File {
 }
 
 #[derive(Clone, Debug)]
+pub enum Draggable {
+    Press,
+    Release,
+}
+
+#[derive(Clone, Debug)]
 pub enum Message {
     Audio(Audio),
     File(File),
 }
+
