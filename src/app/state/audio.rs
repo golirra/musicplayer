@@ -43,7 +43,8 @@ pub struct AudioState {
     pub current_pos: f32,
     playback_sink: Option<Sink>,
     _audio_stream: Option<OutputStream>,
-    pub files: Vec<Arc<String>>,
+    files: Vec<Arc<String>>,
+    current_song_index: usize,
 }
 
 impl AudioState {
@@ -55,6 +56,7 @@ impl AudioState {
             playback_sink: None,
             _audio_stream: None,
             files: vec![],
+            current_song_index: 0,
         }
     }
 
@@ -72,9 +74,20 @@ impl AudioState {
             },
             Audio::Play(file) => {
                 self.load_audio(&file);
+                println!("files len:{}", self.files.len());
+                // self.current_song_index = self.current_song_index % self.files.len();
+                // println!("song index:{}", self.current_song_index);
                 Task::none()
             },
-
+            Audio::Prev => {
+                dbg!("{}",&self.current_song_index);
+                self.prev_song();
+                Task::none()
+            },
+            Audio::Next => {
+                self.next_song();
+                Task::none()
+            },
             Audio::TogglePlayPause => {
                 if let Some(sink) = &self.playback_sink {
                     if sink.is_paused() {
@@ -97,7 +110,6 @@ impl AudioState {
             },
             //TODO:
             Audio::ShowFiles => {
-                // self.files = playlist::Playlist::get_filenames_in_directory().into_iter().map(Arc::new).collect();
                 self.files = scanner::read_table().unwrap().into_iter().map(Arc::new).collect();
                 Task::none()
             },
@@ -106,7 +118,7 @@ impl AudioState {
     }
 
     pub fn subscription(&self) -> Subscription<Audio> {
-        println!("x");
+        // println!("{}",self.current_song_index);
         time::every(Duration::from_millis(500)).map(|_instant| Audio::PlaybackTick)
         // Update every second
     }
@@ -115,6 +127,10 @@ impl AudioState {
         let stream_handle = rodio::OutputStreamBuilder::open_default_stream()?;
         let sink = rodio::Sink::connect_new(&stream_handle.mixer());
         let file = fs::File::open(file_path)?;
+        // let file2 = fs::File::open("C:/Users/webbs/programming/cs/rust/Rust-playground/src/Music/Shot_Forth_Self_Living/03.Medicine-Defective")?;
+        // let decoder2 = rodio::Decoder::try_from(file2)?;
+
+
         let decoder = rodio::Decoder::try_from(file)?;
         match decoder.total_duration() {
             Some(duration) => self.song_length = Some(duration),
@@ -122,6 +138,7 @@ impl AudioState {
         }
 
         sink.append(decoder);
+        // sink.append(decoder2);
         sink.set_volume(0.2);
 
         self._audio_stream = Some(stream_handle);
@@ -147,13 +164,31 @@ impl AudioState {
         // Use the load_audio function to load the song
         // self.load_audio(&song_path)
     }
+
+    fn prev_song(&mut self) { 
+        // Check if we are at the first song, then wrap around to the last one
+        self.current_song_index = if self.current_song_index == 0 {
+            self.files.len() - 1  // Go to the last song
+        } else {
+            self.current_song_index - 1  // Go to the previous song
+        };
+
+        let prev_song = self.files[self.current_song_index].clone();
+        self.load_audio(&prev_song);
+    }
+
+    fn next_song(&mut self) {
+        self.current_song_index = (self.current_song_index + 1) % self.files.len();
+        let next_song = self.files[self.current_song_index].clone();
+        self.load_audio(&next_song);
+    }
+
     pub fn update_playback_position(&mut self) {
         if let Some(sink) = &self.playback_sink {
             self.current_pos = sink.get_pos().as_secs_f32();
         } else {
             self.current_pos = 0.0;
         }
-        
     }
 
     pub fn song_duration(&self) -> f32 {
@@ -171,10 +206,10 @@ impl AudioState {
     pub fn files_as_buttons(&self) -> Column<Audio> {
          self.files
             .iter()
-            .fold(Column::new(), |column, filename| {
+            .enumerate()
+            .fold(Column::new(), |column, (index, filename)| {
                 column.push(button(filename.as_str()).on_press(Audio::Play(filename.clone())))
             })
-               
     }
 }
 
