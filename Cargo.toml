@@ -1,10 +1,19 @@
+# Main binary
+[[bin]]
+name = "m"
+path = "src/main.rs"
+
+# Testing binary
+[[bin]]
+name = "t"
+path = "bin/playground.rs"
 [package]
 name = "musicplayer"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-iced = { version = "0.13.1", features = ["tokio"] }
+iced = { version = "0.13.1", features = ["tokio", "advanced"] }
 rodio = { git = "https://github.com/RustAudio/rodio.git", features = ["symphonia", "symphonia-mp3"] }
 tokio = { version = "1.44.0", features = ["full"] }
 rusqlite = { version = "0.34.0", features = ["bundled"] }
