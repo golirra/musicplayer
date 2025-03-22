@@ -11,26 +11,42 @@ mod circle {
     use iced::advanced::{Shell, Clipboard};
     use iced::{Color, Element, Length, Rectangle, Size};
 
-
-    pub struct Circle {
+    pub struct Circle<'a, Message> {
+        on_press: Option<OnPress<'a, Message>>,
         pos: Point,
         dragging: bool
     }
 
-    impl Circle {
+    enum OnPress<'a, Message> {
+        Direct(Message),
+        Closure(Box<dyn Fn() -> Message + 'a>),
+    }
+
+    impl<Message: Clone> OnPress<'_, Message> {
+        fn get(&self) -> Message {
+            match self {
+                OnPress::Direct(message) => message.clone(),
+                OnPress::Closure(f) => f(),
+            }
+        }
+    }
+
+    impl<'a, Message> Circle<'a, Message> {
         pub fn new(pos: Point) -> Self {
             Self { 
+                on_press: None,
                 pos: Point::new(0.0, 0.0),
                 dragging: false,
             }
         }
     }
 
-    pub fn circle(pos: Point) -> Circle {
+    pub fn circle<'a, Message>(pos: Point) -> Circle<'a, Message> {
         Circle::new(pos)
     }
 
-    impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Circle
+    impl<'a, Message, Theme, Renderer> Widget<Message, Theme, Renderer> 
+        for Circle<'a, Message>
     where
         Renderer: renderer::Renderer,
     {
@@ -124,12 +140,13 @@ mod circle {
         }
     }
 
-    impl<Message, Theme, Renderer> From<Circle>
-        for Element<'_, Message, Theme, Renderer>
+    impl<'a, Message, Theme, Renderer> From<Circle<'a, Message>>
+        for Element<'a, Message, Theme, Renderer>
     where
+        Message: Clone + 'a,
         Renderer: renderer::Renderer,
     {
-        fn from(circle: Circle) -> Self {
+        fn from(circle: Circle<'a, Message>) -> Self {
             Self::new(circle)
         }
     }
