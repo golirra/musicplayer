@@ -11,9 +11,10 @@ mod circle {
     use iced::advanced::{Shell, Clipboard};
     use iced::{Color, Element, Length, Rectangle, Size};
 
+    //This struct represents the state of the widget. Must be given a pos on construction
     pub struct Circle<'a, Message> {
         on_press: Option<OnPress<'a, Message>>,
-        pos: Point,
+        pos: Point, //initial position of widget
         dragging: bool
     }
 
@@ -35,9 +36,14 @@ mod circle {
         pub fn new(pos: Point) -> Self {
             Self { 
                 on_press: None,
-                pos: Point::new(0.0, 0.0),
+                pos, //can use pos instead of pos: pos so long as theres a var in scope with correct name
                 dragging: false,
             }
+        }
+
+        pub fn on_press(mut self, on_press: Message) -> Self {
+            self.on_press = Some(OnPress::Direct(on_press));
+            self
         }
     }
 
@@ -161,37 +167,32 @@ pub fn main() -> iced::Result {
     iced::run("Custom Widget - Iced", Example::update, Example::view)
 }
 
+#[derive(Default)]
 struct Example {
     pos: Point,
 }
 
 #[derive(Debug, Clone, Copy)]
 enum Message {
-    RadiusChanged(f32),
+    RadiusChanged,
 }
 
 impl Example {
-    fn new() -> Self {
-        Example {pos: Point::new(20.0,20.0) }
-    }
+    
 
     fn update(&mut self, message: Message) {
         match message {
-            Message::RadiusChanged(radius) => {
+            Message::RadiusChanged => {
+                println!("circle was pressed!");
             }
         }
     }
 
     fn view(&self) -> Element<Message> {
-        circle(
-            self.pos
-        )
+        circle(Point::new(500.0, 500.0)).on_press(Message::RadiusChanged)
+        
             .into()
     }
 }
 
-impl Default for Example {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+
