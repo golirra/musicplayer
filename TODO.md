@@ -22,6 +22,11 @@
 - [ ] equalizer, visualizer?
 - [ ] themes
 - [ ] dsp? (maybe too far out of scope of original idea)
+- [ ] Something I frequently do in foobar and would like to stop: when I add a
+set of songs to the playlist screen, eventually the playlist grows so big that I
+have that exact album on the playlist already just farther up/down. So is it
+possible to implement some sort of "if album already in playlist, jump to album
+in playlist view instead of inserting"
 
 
 _Last updated: 2025-03-14_
