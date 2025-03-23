@@ -13,13 +13,17 @@
 - [ ] Make layout not suck
 ### Draggable button:
 - Current draggable button functionality is like this:
-1. on_left_click: start dragging
-2. on_mouse_move: move button with mouse
-3. on_left_release: call button event if it exists, stop dragging
+    1. on_left_click: start dragging
+    2. on_mouse_move: move button with mouse
+    3. on_left_release: call button event if it exists, stop dragging
 
-- To make "drag album from library to playlist" we need:
-1. If dragging from library pane, **no events** are allowed
-2. Alternatively, **events only allowed in playlist pane**
+- To make "drag album from library pane to playlist pane" we need:
+    1. button press events that involve audio playback are only allowed to fire
+       if the button is in the playback pane
+    2. button press events in the library pane can be:
+        - right click to see information
+        - double left click to expand a list
+        - left click + drag to drag over to playlist pane
 
 
 
