@@ -38,13 +38,14 @@ impl From<rodio::PlayError> for AudioError {
 
 #[derive(Default)]
 pub struct AudioState {
-    volume: f32,
+    pub volume: f32,
     pub song_length: Option<Duration>, 
     pub current_pos: f32,
-    playback_sink: Option<Sink>,
+    pub playback_sink: Option<Sink>,
     _audio_stream: Option<OutputStream>,
     files: Vec<Arc<String>>,
     current_song_index: usize,
+    pub image: String,
 }
 
 impl AudioState {
@@ -57,6 +58,8 @@ impl AudioState {
             _audio_stream: None,
             files: vec![],
             current_song_index: 0,
+            image: "
+            C:/Users/webbs/programming/cs/rust/musicplayer/assets/playback/cat.jpg".to_string(),
         }
     }
 
@@ -88,6 +91,10 @@ impl AudioState {
                 self.next_song();
                 Task::none()
             },
+            Audio::Volume(volume) => {
+                self.volume(volume);
+                Task::none()
+            }
             Audio::TogglePlayPause => {
                 if let Some(sink) = &self.playback_sink {
                     if sink.is_paused() {
@@ -138,14 +145,14 @@ impl AudioState {
         }
 
         sink.append(decoder);
-        // sink.append(decoder2);
-        sink.set_volume(0.2);
+        sink.set_volume(self.volume);
 
         self._audio_stream = Some(stream_handle);
         self.playback_sink = Some(sink);
 
         Ok(())
     }
+
     fn stop_audio(&mut self) -> Result<(), AudioError>   {
         if let Some(sink) = &self.playback_sink {
             sink.stop();
@@ -181,6 +188,15 @@ impl AudioState {
         self.current_song_index = (self.current_song_index + 1) % self.files.len();
         let next_song = self.files[self.current_song_index].clone();
         self.load_audio(&next_song);
+    }
+
+    fn volume (&mut self, vol: f32) {
+        if let Some(sink) = &self.playback_sink {
+            self.playback_sink.as_mut().unwrap().set_volume(vol);
+        } else {
+            self.volume = vol;
+            println!("shidddd :DDD");
+        }
     }
 
     pub fn update_playback_position(&mut self) {
