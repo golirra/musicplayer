@@ -1,8 +1,10 @@
 //Scan a file system and add their metadata to a sqlite database
 use std::fs;
-use rusqlite::{ToSql, types::ToSqlOutput};
+use std::sync::Arc;
+use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef};
 use serde::{Serialize, Deserialize};
-use std::path::Path;
+use serde_json::Value;
+use std::path::{Path, PathBuf};
 use rusqlite::{params, Connection, Row};
 use anyhow::Result;
 use rusqlite::types::Type;
@@ -37,11 +39,11 @@ impl File {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Metadata {
-    title: String,
-    album: String,
-    artist: String,
-    genre: String,
-    year: String,
+    pub title: String,
+    pub album: String,
+    pub artist: String,
+    pub genre: String,
+    pub year: String,
 }
 
 impl ToSql for Metadata {
@@ -49,6 +51,16 @@ impl ToSql for Metadata {
         serde_json::to_string(self)
             .map(ToSqlOutput::from)
             .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))
+    }
+}
+
+impl FromSql for Metadata {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Metadata> {
+        match value.as_str() {
+            Ok(json_str) => serde_json::from_str(json_str)
+                .map_err(|e| FromSqlError::Other(Box::new(e))),
+            Err(e) => Err(FromSqlError::Other(Box::new(e)))
+        }
     }
 }
 
@@ -95,11 +107,13 @@ pub fn scan_directory(conn: &Connection, dir: &Path, parent_id: Option<i32>) -> 
                     .map(|y| y.to_string())
                     .unwrap_or("Unknown year".to_string()),
             };
-                conn.execute(
+
+            conn.execute(
                 "INSERT INTO files (parentId, name, attribs, path, md)
                 VALUES (?, ?, ?, ?, ?)",
                 params![parent_id, name, attribs, path.to_string_lossy(), md],
             )?;
+                
 
         } else {
             // If it's a file, insert it with the parentId
@@ -111,6 +125,29 @@ pub fn scan_directory(conn: &Connection, dir: &Path, parent_id: Option<i32>) -> 
     }
     Ok(())
 }
+
+pub fn get_paths_with_metadata() -> rusqlite::Result<Vec<(String, Metadata)>> {
+    let db_path = Path::new(DB_PATH);
+    let conn = Connection::open(db_path)?;
+
+    let mut stmt = conn.prepare(
+        "SELECT path, md FROM files WHERE attribs == 32"
+    )?;
+
+    let file_paths_and_metadata: Vec<(String, Metadata)> = stmt
+        .query_map([], |row| {
+            let path: String = row.get(0)?;
+            let metadata: Metadata = row.get(1)?; // Let rusqlite deserialize JSON
+
+            Ok((path, metadata))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    dbg!(&file_paths_and_metadata);
+
+    Ok(file_paths_and_metadata)
+}
+
 
 pub fn get_artist() -> Result<()> {
     let db_path = Path::new(DB_PATH);
@@ -154,7 +191,7 @@ pub fn get_title() -> Result<()> {
     Ok(())
 }
 
-
+//Collects file paths of all .mp3 songs in a directory
 pub fn read_table() -> Result<Vec<String>> {
     let db_path = Path::new(DB_PATH);
     let conn = Connection::open(db_path)?;
@@ -162,12 +199,11 @@ pub fn read_table() -> Result<Vec<String>> {
     let mut stmt = conn.prepare("SELECT path FROM files WHERE attribs == 32")?;
     let rows = stmt.query_map([], |row| row.get(0))?;
     let mut paths = Vec::new();
+
     for row_result in rows {
         paths.push(row_result?);
     }
 
-    //let fi = x.query_map([],|row| row.get(0) )?;
-    //dbg!(fi.collect::<Vec<_>>().pop()); 
     Ok(paths)
 }
 
