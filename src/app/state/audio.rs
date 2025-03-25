@@ -45,7 +45,7 @@ pub struct AudioState {
     pub current_pos: f32,
     pub playback_sink: Option<Sink>,
     _audio_stream: Option<OutputStream>,
-    files: Vec<Arc<(String, Metadata)>>,
+    files: Vec<(String, Metadata)>,
     current_song_index: usize,
     pub image: String,
 }
@@ -86,11 +86,11 @@ impl AudioState {
             },
             Audio::Prev => {
                 dbg!("{}",&self.current_song_index);
-                // self.prev_song();
+                self.prev_song();
                 Task::none()
             },
             Audio::Next => {
-                // self.next_song();
+                self.next_song();
                 Task::none()
             },
             Audio::Volume(volume) => {
@@ -119,7 +119,7 @@ impl AudioState {
             },
             //TODO:
             Audio::ShowFiles => {
-                self.files = scanner::get_paths_with_metadata().unwrap().into_iter().map(Arc::new).collect();
+                self.files = scanner::get_paths_with_metadata().unwrap().into_iter().collect();
                 Task::none()
             },
             _ => {Task::none()},
@@ -174,7 +174,6 @@ impl AudioState {
         // self.load_audio(&song_path)
     }
 
-    /*
     fn prev_song(&mut self) { 
         // Check if we are at the first song, then wrap around to the last one
         self.current_song_index = if self.current_song_index == 0 {
@@ -183,16 +182,16 @@ impl AudioState {
             self.current_song_index - 1  // Go to the previous song
         };
 
-        let prev_song = self.files[self.current_song_index].clone();
+
+        let prev_song = self.files[self.current_song_index].0.clone();
         self.load_audio(&prev_song);
     }
 
     fn next_song(&mut self) {
         self.current_song_index = (self.current_song_index + 1) % self.files.len();
-        let next_song = self.files[self.current_song_index].clone();
+        let next_song = self.files[self.current_song_index].0.clone();
         self.load_audio(&next_song);
     }
-    */
 
     fn volume (&mut self, vol: f32) {
         if let Some(sink) = &self.playback_sink {
