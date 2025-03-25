@@ -1,4 +1,4 @@
-#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports, unused_results)]
 use std::sync::Arc;
 use std::env;
 use std::error::Error;
@@ -12,11 +12,13 @@ use crate::Audio;
 use crate::Message;
 use crate::app::view::playlist;
 use crate::app::state::db::scanner;
+use crate::app::state::db::scanner::Metadata;
 
 use rusqlite::Connection;
 
 
 use iced::time;
+use iced::Length;
 use iced::widget::{button, column, container, progress_bar, row, slider, text};
 use iced::widget::{Button, Column, Container};
 use iced::{Subscription, Renderer, Theme, Element, Task, Fill};
@@ -43,7 +45,7 @@ pub struct AudioState {
     pub current_pos: f32,
     pub playback_sink: Option<Sink>,
     _audio_stream: Option<OutputStream>,
-    files: Vec<Arc<String>>,
+    files: Vec<Arc<(String, Metadata)>>,
     current_song_index: usize,
     pub image: String,
 }
@@ -84,11 +86,11 @@ impl AudioState {
             },
             Audio::Prev => {
                 dbg!("{}",&self.current_song_index);
-                self.prev_song();
+                // self.prev_song();
                 Task::none()
             },
             Audio::Next => {
-                self.next_song();
+                // self.next_song();
                 Task::none()
             },
             Audio::Volume(volume) => {
@@ -117,7 +119,7 @@ impl AudioState {
             },
             //TODO:
             Audio::ShowFiles => {
-                self.files = scanner::read_table().unwrap().into_iter().map(Arc::new).collect();
+                self.files = scanner::get_paths_with_metadata().unwrap().into_iter().map(Arc::new).collect();
                 Task::none()
             },
             _ => {Task::none()},
@@ -172,6 +174,7 @@ impl AudioState {
         // self.load_audio(&song_path)
     }
 
+    /*
     fn prev_song(&mut self) { 
         // Check if we are at the first song, then wrap around to the last one
         self.current_song_index = if self.current_song_index == 0 {
@@ -189,6 +192,7 @@ impl AudioState {
         let next_song = self.files[self.current_song_index].clone();
         self.load_audio(&next_song);
     }
+    */
 
     fn volume (&mut self, vol: f32) {
         if let Some(sink) = &self.playback_sink {
@@ -222,9 +226,12 @@ impl AudioState {
     pub fn files_as_buttons(&self) -> Column<Audio> {
          self.files
             .iter()
-            .enumerate()
-            .fold(Column::new(), |column, (index, filename)| {
-                column.push(button(filename.as_str()).on_press(Audio::Play(filename.clone())))
+            .fold(Column::new(), |column, tuple| {
+                column.push(
+                    button(tuple.1.title.as_str())
+                    .on_press(Audio::Play(tuple.0.clone()))
+                    .height(Length::Shrink)
+                    .width(Length::Shrink))
             })
     }
 }
