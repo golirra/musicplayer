@@ -8,6 +8,8 @@
 
 ## Bug Fixes
 - [x] Song duration doesn't work
+- [ ] There is going to be a bug in the future regarding grabbing filepaths and
+  the way they're associated with artist metadata. Because of the way I'm looping over things in a directory to get filepaths, I need to be careful to associate the right metadata with the particular path.
 
 ## Improvements
 - [ ] Make layout not suck
