@@ -4,13 +4,14 @@ use std::sync::Arc;
 #[derive(Clone, Debug)]
 pub enum Audio {
     Load,
-    Play(Arc<String>),
+    Play(String),
     Stop,
     TogglePlayPause,
     Pause,
     Prev,
     Next,
     RandomNextTrack,
+    Volume(f32),
     Duration,
     SliderPositionChanged(f32),
     UpdatePlaybackPosition(f32),
