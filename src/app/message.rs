@@ -25,12 +25,7 @@ pub enum File {
     Load,
     Display,
     Duration,
-}
-
-#[derive(Clone, Debug)]
-pub enum Draggable {
-    Press,
-    Release,
+    Select(String),
 }
 
 #[derive(Clone, Debug)]

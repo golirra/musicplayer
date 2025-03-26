@@ -7,16 +7,16 @@ use iced::widget::{button, Button, Column};
 use anyhow::Result;
 // use iced::widget::image::{Image, Handle};
 
-
+//TODO: change re-export names in all modules for readability
 use crate::app::view::playlist;
-use crate::app::state::audio::AudioState; //TODO: change re-exports in app module for readability
-use crate::app::message::Audio;
+use crate::app::state::audio::AudioState; 
+use crate::app::message::{Audio, File};
 use crate::app::message::Message;
-use crate::app::state::files::FileState;
+use crate::app::state::playlist::FileState;
 use crate::app::state::db::scanner;
 fn main() -> iced::Result {
     scanner::setup_database();
-    dbg!(scanner::get_paths_with_metadata());
+    // dbg!(scanner::get_paths_with_metadata());
     iced::application(
         "Test application",
         Controller::update,
@@ -34,23 +34,23 @@ fn main() -> iced::Result {
 #[derive(Default)]
 pub struct Controller {
     audio: AudioState,
-    files: playlist::Playlist,
+    files: FileState,
 }
 
 impl Controller {
     pub fn new() -> Self {
         Self {
             audio: AudioState::new(),
-            files: playlist::Playlist::new(),
+            files: FileState::new(),
         }
     }
 
     //NOTE:since self.audio.view() returns an Element<Audio>,iced lets us map over
     //self.audio.view() to wrap the Audio element in a Message::Audio variant
     pub fn view(&self) -> Element<Message>  {
-        let w = playlist::Playlist::new();
+        let w = FileState::new();
         let v = self.audio.view().map(|audio_msg| Message::Audio(audio_msg));
-        let x = self.files.view().map(|file_msg| Message::Audio(file_msg));
+        let x = self.files.view().map(|file_msg| Message::File(file_msg));
         let y = Column::new()
             .push(v)
             .push(x);
@@ -73,15 +73,19 @@ impl Controller {
                 Task::none()
             },
             Message::Audio(Audio::Duration) => {
-                dbg!(self.audio.song_duration());
-                dbg!("in main::Duration");
                 Task::none()
             },
             Message::Audio(audio_msg) => {
                 let _ = self.audio.update(audio_msg);
                 Task::none()
             },
-            Message::File(_) => {
+            Message::File(File::Select(path)) => {
+                println!("file selected: {}", path);
+                self.audio.update(Audio::Play(path));
+                Task::none()
+            },
+            Message::File(file_msg) => {
+                let _ = self.files.update(file_msg);
                 Task::none()
             },
         }
@@ -91,7 +95,5 @@ impl Controller {
         // self.audio.subscription()
         self.audio.subscription().map(|audio_msg| Message::Audio(audio_msg))
     }
-
-
 }
 
