@@ -1,6 +1,8 @@
 #![allow(unused_imports, unused_braces)]
 use iced::{Element};
 use iced::Length;
+use iced::Background;
+use iced::widget::button::{Style, Status};
 use std::collections::HashMap;
 use iced::widget::{image, container, button, slider, text, Column, Row, Button, progress_bar};
 use lazy_static::lazy_static;
@@ -23,11 +25,11 @@ impl AudioState {
 
 
         //Playback controls
-        let controls = Column::new()
-            .push(Self::playback_controls()) //Already is a row
+        let controls = Row::new()
+            .push(Self::playback_controls()) //is a row
             .push(slider(0.0..=1.0, self.volume, Audio::Volume).step(0.01).width(200))
             .push(progress_bar(0.0..=self.song_duration(), self.current_pos))
-            .push(button("Song duration").on_press(Audio::Duration));
+            .push(button("dur").on_press(Audio::Duration));
 
         //Display songs in directory as playable buttons
         let file_list = Column::new()
@@ -39,7 +41,6 @@ impl AudioState {
             .push(controls)
             .push(file_list)
             .into()
-
     }
 
     // Your `playback_controls` function with images
@@ -51,12 +52,12 @@ impl AudioState {
                 // .content_fit(ContentFit::Contain)
                 .width(Length::Shrink)
                 .height(Length::Shrink);
-            
-
             row.push(
                 Button::new(image)
+                // .style(MyButtonStyle::style_fn())
                 .on_press(action.clone())
-                .style(MyButtonStyle))
+                // .style(MyButtonStyle::style())
+                )
         });
 
         playback_controls.into()
@@ -73,15 +74,39 @@ pub const BUTTONS: &[(&'static str, Audio); 6] = &[
     ("C:/Users/webbs/programming/cs/rust/musicplayer/assets/playback/next.png", Audio::Next),
 ];
 
+
 struct MyButtonStyle;
 
 impl MyButtonStyle {
-    pub fn style() -> button::Style {
-        button::Style {
-            background: Some(iced::Background::Color(Color::from_rgb(0.2, 0.5, 0.8))),
-            text_color: Color::WHITE,
-            border: iced::Border::default(),
-            shadow: iced::Shadow::default(),
+    fn style_fn<'a>() -> impl Fn(&(), Status) -> button::Style + 'a {
+        // This function returns a closure that applies the button style based on its status
+        move |_theme: &(), status: Status| {
+            match status {
+                Status::Hovered => button::Style {
+                    background: Some(Background::Color(Color::from_rgb(0.3, 0.8, 0.3))),
+                    text_color: Color::WHITE,
+                    border: iced::Border::default(),
+                    shadow: iced::Shadow::default(),
+                },
+                Status::Active => button::Style {
+                    background: Some(Background::Color(Color::from_rgb(1.0, 1.0, 1.0))),
+                    text_color: Color::WHITE,
+                    border: iced::Border::default(),
+                    shadow: iced::Shadow::default(),
+                },
+                Status::Pressed => button::Style {
+                    background: Some(Background::Color(Color::from_rgb(0.2, 0.5, 0.8))),
+                    text_color: Color::WHITE,
+                    border: iced::Border::default(),
+                    shadow: iced::Shadow::default(),
+                },
+                Status::Disabled => button::Style {
+                    background: Some(Background::Color(Color::from_rgb(0.2, 0.5, 0.8))),
+                    text_color: Color::WHITE,
+                    border: iced::Border::default(),
+                    shadow: iced::Shadow::default(),
+                },
+            }
         }
     }
 }
