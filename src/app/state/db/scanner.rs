@@ -143,7 +143,7 @@ pub fn get_paths_with_metadata() -> rusqlite::Result<Vec<(String, Metadata)>> {
         })?
         .collect::<Result<Vec<_>, _>>()?;
 
-    dbg!(&file_paths_and_metadata);
+    //dbg!(&file_paths_and_metadata);
 
     Ok(file_paths_and_metadata)
 }
@@ -163,9 +163,6 @@ pub fn get_artist() -> Result<()> {
         Ok(title.unwrap_or("Unknown Artist".to_string()))
     })?;
 
-    for row in rows {
-        println!("Artist: {}", row?);
-    }
 
     Ok(())
 }
@@ -184,9 +181,6 @@ pub fn get_title() -> Result<()> {
         Ok(title.unwrap_or("Unknown Title".to_string()))
     })?;
 
-    for row in rows {
-        println!("Title: {}", row?);
-    }
 
     Ok(())
 }
