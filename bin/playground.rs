@@ -1,3 +1,4 @@
+//A button with added drag and drop functionality
 mod button {
     use iced::advanced::layout::{self, Layout};
     use iced::border::{self, Border};
@@ -30,7 +31,6 @@ mod button {
         clip: bool,
         class: Theme::Class<'a>,
         status: Option<Status>,
-        pos: Point, //initial position of widget
         dragging: bool
     }
 
@@ -69,7 +69,6 @@ mod button {
                 clip: false,
                 class: Theme::default(),
                 status: None,
-                pos, //shorthand field init
                 dragging: false,
             }
         }
@@ -122,6 +121,8 @@ mod button {
         }
 
     }
+    //Store stuff in a State struct rather than the Button struct, as we have to update the state
+    //based
     #[derive(Debug, Clone, Copy, PartialEq, Default)] 
     struct State {
         is_pressed: bool,
@@ -164,7 +165,6 @@ mod button {
                 }
             }
 
-
             fn layout(
                 &self,
                 tree: &mut widget::Tree,
@@ -182,12 +182,11 @@ mod button {
                         self.content
                             .as_widget()
                             .layout(&mut tree.children[0], renderer, limits,)
-                            .move_to(state.pos)
+                            
                     },
 
                 );
                 x.move_to(state.pos)
-                
                 // x.move_to(self.pos)
                 // let size = Size::new(100.0, 100.0);
                 // let node = layout::Node::new(size);
@@ -585,8 +584,6 @@ mod button {
             ..style
         }
     }
-
-
 }
 
 use iced::widget::{center, Container, column, slider, text};
@@ -594,12 +591,11 @@ use iced::{ Center, Element};
 use iced::Point;
 
 pub fn main() -> iced::Result {
-    iced::run("Custom Widget - Iced", Example::update, Example::view)
+    iced::run("Custom Widget - Iced", App::update, App::view)
 }
 
 #[derive(Default)]
-struct Example {
-    pos: Point,
+struct App {
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -607,9 +603,7 @@ enum Message {
     RadiusChanged,
 }
 
-impl Example {
-
-
+impl App {
     fn update(&mut self, message: Message) {
         match message {
             Message::RadiusChanged => {
@@ -617,7 +611,6 @@ impl Example {
             }
         }
     }
-
     fn view(&self) -> Element<Message> {
         let b = button::Button::new("test", Point::new(300.0, 300.0));
         b.on_press(Message::RadiusChanged)
