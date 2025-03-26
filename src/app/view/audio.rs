@@ -54,8 +54,7 @@ impl AudioState {
 }
 
 //IS THIS REALLY STUPID? PROBABLY BUT THE EARLIER ONE WAS EVEN WORSE. KILL ME
-pub const BUTTONS: &[(&'static str, Audio); 6] = &[
-    ("C:/Users/webbs/programming/cs/rust/musicplayer/assets/playback/pause.png", Audio::Load),
+pub const BUTTONS: &[(&'static str, Audio); 5] = &[
     ("C:/Users/webbs/programming/cs/rust/musicplayer/assets/playback/pause.png", Audio::Stop),
     ("C:/Users/webbs/programming/cs/rust/musicplayer/assets/playback/pause.png", Audio::TogglePlayPause),
     ("C:/Users/webbs/programming/cs/rust/musicplayer/assets/playback/play.png", Audio::Pause),
