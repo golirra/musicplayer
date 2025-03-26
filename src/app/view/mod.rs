@@ -1,2 +1,2 @@
-pub mod view;
+pub mod audio;
 pub mod playlist;
