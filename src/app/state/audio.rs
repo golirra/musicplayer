@@ -1,5 +1,5 @@
 #![allow(dead_code, unused_imports, unused_results)]
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::env;
 use std::error::Error;
 use std::path::{Path, PathBuf};
@@ -8,6 +8,7 @@ use std::io::{BufReader, Error as ioError};
 use std::time::Duration;
 use std::vec;
 use tokio;
+use iced::advanced::image::Handle;
 use crate::Audio;
 use crate::Message;
 use crate::app::view::playlist;
@@ -45,9 +46,9 @@ pub struct AudioState {
     pub current_pos: f32,
     pub playback_sink: Option<Sink>,
     _audio_stream: Option<OutputStream>,
-    files: Vec<(String, Metadata)>,
-    current_song_index: usize,
-    pub image: String,
+    // files: Vec<(String, Metadata)>,
+    pub current_song_index: usize,
+    // pub image: Option<Handle>,
 }
 
 impl AudioState {
@@ -58,10 +59,8 @@ impl AudioState {
             current_pos: 0.0,
             playback_sink: None,
             _audio_stream: None,
-            files: vec![],
+            // files: vec![],
             current_song_index: 0,
-            image: "
-            C:/Users/webbs/programming/cs/rust/musicplayer/assets/playback/cat.jpg".to_string(),
         }
     }
 
@@ -79,22 +78,27 @@ impl AudioState {
             },
             Audio::Play(file) => {
                 self.load_audio(&file);
-                println!("files len:{}", self.files.len());
                 // self.current_song_index = self.current_song_index % self.files.len();
                 // println!("song index:{}", self.current_song_index);
-                Task::none()
+                println!("Playing song");
+                Task::done(Audio::Play(file))
             },
-            Audio::Prev => {
-                dbg!("{}",&self.current_song_index);
-                self.prev_song();
-                Task::none()
-            },
-            Audio::Next => {
-                self.next_song();
-                Task::none()
-            },
+            // Audio::Prev => {
+            //     dbg!("{}",&self.current_song_index);
+            //     self.prev_song();
+            //     Task::none()
+            // },
+            // Audio::Next => {
+            //     self.next_song();
+            //     Task::none()
+            // },
             Audio::Volume(volume) => {
-                self.volume(volume);
+                if let Some(sink) = &self.playback_sink {
+                    sink.set_volume(volume);
+                    self.volume = volume;
+                } else {
+                    self.volume = volume;
+                }
                 Task::none()
             }
             Audio::TogglePlayPause => {
@@ -115,11 +119,6 @@ impl AudioState {
             },
             Audio::Duration => {
                 dbg!("{}", self.song_length);
-                Task::none()
-            },
-            //TODO:
-            Audio::ShowFiles => {
-                self.files = scanner::get_paths_with_metadata().unwrap().into_iter().collect();
                 Task::none()
             },
             _ => {Task::none()},
@@ -174,33 +173,26 @@ impl AudioState {
         // self.load_audio(&song_path)
     }
 
-    fn prev_song(&mut self) { 
-        // Check if we are at the first song, then wrap around to the last one
-        self.current_song_index = if self.current_song_index == 0 {
-            self.files.len() - 1  // Go to the last song
-        } else {
-            self.current_song_index - 1  // Go to the previous song
-        };
-
-
-        let prev_song = self.files[self.current_song_index].0.clone();
-        self.load_audio(&prev_song);
-    }
-
-    fn next_song(&mut self) {
-        self.current_song_index = (self.current_song_index + 1) % self.files.len();
-        let next_song = self.files[self.current_song_index].0.clone();
-        self.load_audio(&next_song);
-    }
-
-    fn volume (&mut self, vol: f32) {
-        if let Some(sink) = &self.playback_sink {
-            self.playback_sink.as_mut().unwrap().set_volume(vol);
-        } else {
-            self.volume = vol;
-            println!("shidddd :DDD");
-        }
-    }
+    // fn prev_song(&mut self) { 
+    //     // Check if we are at the first song, then wrap around to the last one
+    //     self.current_song_index = if self.current_song_index == 0 {
+    //         self.files.len() - 1  // Go to the last song
+    //     } else {
+    //         self.current_song_index - 1  // Go to the previous song
+    //     };
+    //
+    //
+    //     //TODO: how to not clone here?
+    //     let prev_song = self.files[self.current_song_index].0.clone();
+    //
+    //     self.load_audio(&prev_song);
+    // }
+    //
+    // fn next_song(&mut self) {
+    //     self.current_song_index = (self.current_song_index + 1) % self.files.len();
+    //     let next_song = self.files[self.current_song_index].0.clone();
+    //     self.load_audio(&next_song);
+    // }
 
     pub fn update_playback_position(&mut self) {
         if let Some(sink) = &self.playback_sink {
@@ -220,18 +212,6 @@ impl AudioState {
             .unwrap()
             .filter_map(|entry| entry.ok().and_then(|e| e.file_name().into_string().ok()))
             .collect()
-    }
-    //TODO: Format button names properly
-    pub fn files_as_buttons(&self) -> Column<Audio> {
-         self.files
-            .iter()
-            .fold(Column::new(), |column, tuple| {
-                column.push(
-                    button(tuple.1.title.as_str())
-                    .on_press(Audio::Play(tuple.0.clone()))
-                    .height(Length::Shrink)
-                    .width(Length::Shrink))
-            })
     }
 }
 
