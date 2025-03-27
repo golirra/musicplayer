@@ -251,6 +251,7 @@ mod button {
                 let custom_event = match event {
                     Event::Mouse(iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left)) => {
                         if self.on_press.is_some() && cursor.is_over(layout.bounds()) {
+                            println!("One");
                             CustomEvent::IcedEvent(event)
                         } else {
                             CustomEvent::None
@@ -259,7 +260,8 @@ mod button {
                     Event::Mouse(iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left)) => {
                         if self.dragging {
                             self.dragging = false;
-                            CustomEvent::Drop
+                            CustomEvent::IcedEvent(event)
+                            // CustomEvent::Drop
                         } else {
                             CustomEvent::IcedEvent(event)
                         }
@@ -278,10 +280,11 @@ mod button {
                         match original_event {
                             Event::Mouse(mouse_event) => match mouse_event {
                                 iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left) => {
+                                    println!("Two");
                                     let state = tree.state.downcast_mut::<State>();
                                     state.is_pressed = true;
                                     self.dragging = true;
-                                    return IcedStatus::Captured;
+                                    IcedStatus::Captured
 
                                     // dbg!("{}",cursor.position().unwrap());
                                 },
@@ -647,8 +650,8 @@ mod button {
     }
 }
 
-use iced::widget::{center, Container, column, slider, text};
-use iced::{ Center, Element};
+use iced::widget::{center, container, Stack, Column, slider, text, Text};
+use iced::{ Center, Element, Length};
 use iced::Point;
 
 pub fn main() -> iced::Result {
@@ -673,8 +676,26 @@ impl App {
         }
     }
     fn view(&self) -> Element<Message> {
-        let b = button::Button::new("test", Point::new(300.0, 300.0));
-        b.on_press(Message::RadiusChanged)
+        let b = button::Button::new("test", Point::new(300.0, 300.0))
+            .on_press(Message::RadiusChanged);
+        let playlist = container("Playlist")
+            .height(300)
+            .style(container::dark);
+        Stack::new()
+            .push(playlist)
+            .push(b)
             .into()
+        
+
+
+            
+
+
+        
+        // Column::new()
+        //     .push(b)
+        //     .push(x)
+        //     .spacing(50)
+        //     .into()
     }
 }
