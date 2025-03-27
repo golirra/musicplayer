@@ -25,6 +25,7 @@ mod button {
     {
         content: Element<'a, Message, Theme, Renderer>,
         on_press: Option<OnPress<'a, Message>>,
+        on_drop: Option<OnDrop<Message>>,
         width: Length,
         height: Length,
         padding: Padding,
@@ -34,18 +35,36 @@ mod button {
         dragging: bool
     }
 
+    enum OnDrop<Message> {
+        Direct(Message),
+    }
+
+    impl<Message: Clone> OnDrop<Message> {
+        fn get(&self) -> Message {
+            match self {
+                OnDrop::Direct(message) => message.clone(),
+            }
+        }
+    }
+
     enum OnPress<'a, Message> {
         Direct(Message),
         Closure(Box<dyn Fn() -> Message + 'a>),
     }
 
-    impl<'a, Message: Clone> OnPress<'_, Message> { //maybe remove 'a
+    impl<'a, Message: Clone> OnPress<'_, Message> {
         fn get(&self) -> Message {
             match self {
                 OnPress::Direct(message) => message.clone(),
                 OnPress::Closure(f) => f(),
             }
         }
+    }
+
+    enum CustomEvent {
+        IcedEvent(Event),
+        Drop,
+        None,
     }
 
     impl<'a, Message, Theme, Renderer> Button<'a, Message, Theme, Renderer>
@@ -62,6 +81,7 @@ mod button {
 
             Button { 
                 content,
+                on_drop: None,
                 on_press: None,
                 width: size.width.fluid(),
                 height: size.height.fluid(),
@@ -76,6 +96,11 @@ mod button {
         //Sets the message that will be produced when the Button is pressed
         pub fn on_press(mut self, on_press: Message) -> Self {
             self.on_press = Some(OnPress::Direct(on_press));
+            self
+        }
+
+        pub fn on_drop(mut self, on_drop: Message) -> Self {
+            self.on_drop = Some(OnDrop::Direct(on_drop));
             self
         }
 
@@ -186,6 +211,8 @@ mod button {
                     },
 
                 );
+                //Move the Node to whatever state's position is when UI reloads,
+                //which will happen everytime an event fires in on_event
                 x.move_to(state.pos)
                 // x.move_to(self.pos)
                 // let size = Size::new(100.0, 100.0);
@@ -220,71 +247,105 @@ mod button {
                 shell: &mut Shell<'_, Message>,
                 _viewport: &Rectangle,
             ) -> IcedStatus {
-                match event {
-                    Event::Mouse(mouse_event) => match mouse_event {
-                        iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left) => {
-                            if self.on_press.is_some() {
-                                let bounds = layout.bounds();
-                                if cursor.is_over(bounds) {
+                //custom_event acts as a wrapper around the preexisting Iced Event
+                let custom_event = match event {
+                    Event::Mouse(iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left)) => {
+                        if self.on_press.is_some() && cursor.is_over(layout.bounds()) {
+                            CustomEvent::IcedEvent(event)
+                        } else {
+                            CustomEvent::None
+                        }
+                    }
+                    Event::Mouse(iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left)) => {
+                        if self.dragging {
+                            self.dragging = false;
+                            CustomEvent::Drop
+                        } else {
+                            CustomEvent::IcedEvent(event)
+                        }
+                    }
+                    _ => CustomEvent::IcedEvent(event),
+                };
+
+                //match on the custom event, handle original Iced events like "Mouse" and "Keyboard
+                match custom_event {
+                    CustomEvent::Drop => {
+                        println!("Inside CustomEvent::Drop");
+                        return IcedStatus::Captured;
+                    },
+                    CustomEvent::IcedEvent(original_event) => {
+                        // Handle the original Iced event
+                        match original_event {
+                            Event::Mouse(mouse_event) => match mouse_event {
+                                iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left) => {
                                     let state = tree.state.downcast_mut::<State>();
                                     state.is_pressed = true;
                                     self.dragging = true;
                                     return IcedStatus::Captured;
-                                }
-                            } 
-                            IcedStatus::Ignored 
-                                // dbg!("{}",cursor.position().unwrap());
-                        },
-                        iced::mouse::Event::ButtonPressed(iced::mouse::Button::Right) => {
-                            dbg!(layout.bounds());
-                            IcedStatus::Ignored
-                        },
-                        iced::mouse::Event::CursorMoved { position } => {
-                            if self.dragging {
-                                let state = tree.state.downcast_mut::<State>();
-                                state.pos = position;
-                                // self.pos = position;
-                                shell.invalidate_layout(); //Redraws layout every time an event is
-                                                           //triggered
-                                // println!("we dragging");
-                            }
-                            IcedStatus::Captured
-                        },
-                        iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left) => {
-                            if let Some(on_press) = self.on_press.as_ref().map(OnPress::get) {
-                                let state = tree.state.downcast_mut::<State>();
-                                if state.is_pressed {
-                                    state.is_pressed = false;
-                                    let bounds = layout.bounds();
-                                    if cursor.is_over(bounds) {
-                                        shell.publish(on_press);
-                                    }
-                                    return IcedStatus::Captured;
-                                }
-                            }
-                            //self.pos = cursor.position().expect("Idk");
-                            // shell.invalidate_layout();
-                            self.dragging = false;
-                            IcedStatus::Captured
-                        }
-                        _ => IcedStatus::Ignored,
-                    },
 
-                    _ => IcedStatus::Ignored,
+                                    // dbg!("{}",cursor.position().unwrap());
+                                },
+
+                                iced::mouse::Event::ButtonPressed(iced::mouse::Button::Right) => {
+                                    dbg!(layout.bounds());
+                                    return IcedStatus::Ignored;
+                                },
+                                iced::mouse::Event::CursorMoved { position } => {
+                                    if self.dragging {
+                                        let state = tree.state.downcast_mut::<State>();
+                                        state.pos = position;
+                                        // self.pos = position;
+                                        shell.invalidate_layout(); //Redraws layout every time an event is
+
+                                        //triggered
+                                        // println!("we dragging");
+                                    }
+                                    IcedStatus::Captured
+                                },
+                                iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left) => {
+                                    if let Some(on_press) = self.on_press.as_ref().map(OnPress::get) {
+                                        let state = tree.state.downcast_mut::<State>();
+                                        if state.is_pressed {
+                                            state.is_pressed = false;
+                                            let bounds = layout.bounds();
+                                            if cursor.is_over(bounds) {
+                                                shell.publish(on_press);
+                                            }
+                                            return IcedStatus::Captured;
+                                        }
+                                    }
+                                    //self.pos = cursor.position().expect("Idk");
+                                    // shell.invalidate_layout();
+                                    self.dragging = false;
+                                    IcedStatus::Captured
+                                },
+                                _ => {
+                                    return IcedStatus::Ignored;
+                                },
+                            }//end mouse event match
+                            _ => { //other arms (keyboard, window, touch)
+                                return IcedStatus::Ignored;
+                            },
+                        }
+                    }
+                    _ => {
+                        return IcedStatus::Ignored;
+                    },
                 }
             }
-            /*
-            fn draw(
-                &self,
-                _state: &widget::Tree,
-                renderer: &mut Renderer,
-                _theme: &Theme,
-                _style: &renderer::Style,
-                layout: Layout<'_>,
-                _cursor: mouse::Cursor,
-                _viewport: &Rectangle,
-                ) {
-                renderer.fill_quad(
+
+    /*
+       fn draw(
+       &self,
+       _state: &widget::Tree,
+       renderer: &mut Renderer,
+       _theme: &Theme,
+       _style: &renderer::Style,
+       layout: Layout<'_>,
+       _cursor: mouse::Cursor,
+       _viewport: &Rectangle,
+       ) {
+       renderer.fill_quad(
                 renderer::Quad {
                 bounds: layout.bounds(),
                 border: border::rounded(0.0),
