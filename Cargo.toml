@@ -7,6 +7,12 @@ path = "src/main.rs"
 [[bin]]
 name = "t"
 path = "bin/playground.rs"
+
+#Testing binary 2
+[[bin]]
+name = "t2"
+path = "bin/pane.rs"
+
 [package]
 name = "musicplayer"
 version = "0.1.0"
