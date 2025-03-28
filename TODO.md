@@ -9,6 +9,8 @@
   when the playlist gets too big, I want to be able to focus back to the
 selected file, otherwise I have to scroll over a possibly thousand song playlist
 to find the currently playing track.
+- [ ] Make very easy to use "add to playback queue" functionality to be able to
+  queue songs with the most minimal effort required
 
 
 ## Bug Fixes
