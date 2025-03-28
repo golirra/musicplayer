@@ -1,5 +1,7 @@
 #![allow(unused_imports, unused_braces, dead_code)]
 mod app;
+mod widget;
+
 use std::env;
 use std::path::Path;
 use iced::{Theme, Element, Task, Subscription};
@@ -24,9 +26,8 @@ fn main() -> iced::Result {
     )
     .subscription(Controller::subscription)
     .resizable(true)
-    .theme(|_| Theme::Light)
+    .theme(|_| Theme::Nord)
     .run()
-
 }
 //NOTE:To delegate control to other areas of the program, create a struct whose fields are the "sub
 //controllers" and then call the relevant function in update() or view()
@@ -54,12 +55,8 @@ impl Controller {
         let y = Column::new()
             .push(v)
             .push(x);
+
         y.into()
-        
-        // let x = Handle::from_path("C:/Users/webbs/programming/cs/rust/musicplayer/assets/playback/cat.jpg");
-        // let y: Image<Handle> = Image::new(x);
-        // y.opacity(1.0).into()
-        // v.into()
     }
     
     pub fn update(&mut self, message: Message) -> Task<Message> {
