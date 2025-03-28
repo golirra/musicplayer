@@ -1,5 +1,4 @@
-//Much of the code is copied from the source for a "Pane"
-//a container for the library and playlist panes
+//A modified version of a Container that enables drag/drop functionality on items inside it 
 #![allow(warnings)]
 mod pane {
     use iced::advanced::layout::{self, Layout};
@@ -18,7 +17,8 @@ mod pane {
     use iced::Gradient;
     use iced::gradient;
     use iced::task;
-    use iced::advanced::{Shell, Clipboard};
+
+    use iced::advanced::{Shell, Overlay, Clipboard};
     use iced::{Background, Color, Element, Length, Padding, Rectangle,
         Shadow, Size, Theme, Vector};
     use iced::alignment;
@@ -89,7 +89,6 @@ mod pane {
     {
         pub fn new(
             content: impl Into<Element<'a, Message, Theme, Renderer>>,
-            pos: Point
         ) -> Self {
             let content = content.into();
             let size = content.as_widget().size_hint();
@@ -221,6 +220,18 @@ mod pane {
             self
         }
 
+        // pub fn overlay(
+        //     self,
+        //     position:Point,
+        //     target_height: f32,
+        // )-> overlay::Element<'a, Message,Theme,Renderer> {
+        //     overlay::Element::new(Box::new(Overlay::new(
+        //                 position,
+        //                 self,
+        //                 target_height,
+        //     )))
+        // }
+
         /// Sets whether the contents of the [`Pane`] should be clipped on
         /// overflow.
         pub fn clip(mut self, clip: bool) -> Self {
@@ -251,7 +262,6 @@ mod pane {
     #[derive(Debug, Clone, Copy, PartialEq, Default)] 
     struct State {
         is_pressed: bool,
-        pos: Point,
     }
 
     /*
@@ -288,6 +298,7 @@ mod pane {
                 height: self.height,
             }
         }
+
 
         fn layout(
             &self,
@@ -489,7 +500,7 @@ mod pane {
     }
 
     /// The identifier of a [`Pane`].
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
     pub struct Id(widget::Id);
 
     impl Id {
@@ -594,6 +605,8 @@ mod pane {
             }
         }
 
+            //was previously task::widget in the source code which
+            //is a type alias for "operate"
             iced::advanced::widget::operate(VisibleBounds {
             target: id.into(),
             depth: 0,
@@ -748,9 +761,13 @@ mod pane {
 }
 
 
-use iced::widget::{center, container, Stack, Column, slider, text, Text};
+use iced::widget::{center, Container, container, Stack, Column, slider, text, Text};
 use iced::{ Center, Element, Length};
 use iced::Point;
+use iced::overlay;
+//Import stuff from other test binary
+mod playground;
+use playground::button;
 
 pub fn main() -> iced::Result {
     iced::run("Custom Widget - Iced", App::update, App::view)
@@ -774,18 +791,24 @@ impl App {
         }
     }
     fn view(&self) -> Element<Message> {
-        let p = pane::Pane::new("test", Point::new(300.0, 300.0))
+        let base = pane::Pane::new("BASE")
+            .height(1000)
+            .width(800)
+            .clip(false);
+        
+        let b = button::Button::new("test", Point::new(300.0, 300.0))
             .on_press(Message::Test)
-            .style(pane::dark)
-            .height(500)
-            .width(500);
-        
+            .clip(false);
 
-        
-        p.into()
-
+        let playlist = pane::Pane::new("Playlist")
+            .height(250)
+            .width(250)
+            .clip(false)
+            .style(pane::dark);
+        Stack::new()
+            .push(base)
+            .push(playlist)
+            .push(b)
+            .into()
     }
 }
-
-
-
