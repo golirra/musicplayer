@@ -5,6 +5,11 @@
 - [ ] Rest of playback_bar (next, prev, randnext)
 - [ ] Cache/save file list to persist across sessions (sql?)
 - [ ] Implement playlist functionality
+- [ ] Button to "jump" to the current playing song in a playlist tab. In foobar,
+  when the playlist gets too big, I want to be able to focus back to the
+selected file, otherwise I have to scroll over a possibly thousand song playlist
+to find the currently playing track.
+
 
 ## Bug Fixes
 - [x] Song duration doesn't work
