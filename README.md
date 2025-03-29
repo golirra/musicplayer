@@ -5,3 +5,8 @@ A music player modelled after foobar2000
 
 (Really I'm just padding this description section to make it look more professional)
 
+I'm working on this to learn Rust and also just practice programming in general.
+Some features include: 
+- Asynchronous library scanning
+- ???THATS IT????
+
