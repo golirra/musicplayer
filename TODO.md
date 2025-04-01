@@ -20,6 +20,8 @@ to find the currently playing track.
 
 ## Improvements
 - [ ] Make layout not suck
+- [ ] Draggable button should probably be named something better than "button"
+to make it more obvious its a custom button separate from iced::widget::button
 ### Draggable button:
 - Current draggable button functionality is like this:
     1. on_left_click: start dragging
