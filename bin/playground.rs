@@ -1,9 +1,11 @@
 //A button with added drag and drop functionality
-mod button {
+#![allow(warnings)]
+pub mod button {
+    use std::fmt;
     use iced::advanced::layout::{self, Layout};
     use iced::border::{self, Border};
     use iced::advanced::renderer;
-    use iced::advanced::widget::{self, Operation, Widget};
+    use iced::advanced::widget::{self, operation::{Outcome, Scrollable}, Id, Operation, Widget};
     use iced::advanced::widget::tree::{self, Tree};
     use iced::theme::palette;
     use iced::overlay;
@@ -20,12 +22,14 @@ mod button {
     //This struct represents the state of the widget. Must be given a pos on construction
     pub struct Button<'a, Message, Theme = iced::Theme, Renderer = iced::Renderer>
     where 
+        Message: Clone,
         Renderer: renderer::Renderer,
         Theme: Catalog,
     {
         content: Element<'a, Message, Theme, Renderer>,
-        on_press: Option<OnPress<'a, Message>>,
-        on_drop: Option<OnDrop<Message>>,
+        on_press: Option<Message>,
+        on_drop: Option<Box<dyn Fn(Point, Rectangle) -> Message + 'a>>,
+        on_drag: Option<Box<dyn Fn(Point, Rectangle) -> Message + 'a>>,
         width: Length,
         height: Length,
         padding: Padding,
@@ -47,42 +51,27 @@ mod button {
         }
     }
 
-    enum OnPress<'a, Message> {
-        Direct(Message),
-        Closure(Box<dyn Fn() -> Message + 'a>),
-    }
-
-    impl<'a, Message: Clone> OnPress<'_, Message> {
-        fn get(&self) -> Message {
-            match self {
-                OnPress::Direct(message) => message.clone(),
-                OnPress::Closure(f) => f(),
-            }
-        }
-    }
-
-    enum CustomEvent {
-        IcedEvent(Event),
-        Drop,
-        None,
+    enum CustomEvent<Message> {
+        IcedEvent(Message),
     }
 
     impl<'a, Message, Theme, Renderer> Button<'a, Message, Theme, Renderer>
     where 
+        Message: Clone,
         Renderer: renderer::Renderer, //is advanced::Renderer is core::Renderer in docs???
         Theme: Catalog,
     {
         pub fn new(
             content: impl Into<Element<'a, Message, Theme, Renderer>>,
-            pos: Point
         ) -> Self {
             let content = content.into();
             let size = content.as_widget().size_hint();
 
             Button { 
                 content,
-                on_drop: None,
                 on_press: None,
+                on_drop: None,
+                on_drag: None,
                 width: size.width.fluid(),
                 height: size.height.fluid(),
                 padding: DEFAULT_PADDING,
@@ -93,14 +82,24 @@ mod button {
             }
         }
 
-        //Sets the message that will be produced when the Button is pressed
-        pub fn on_press(mut self, on_press: Message) -> Self {
-            self.on_press = Some(OnPress::Direct(on_press));
+        pub fn on_press(mut self, message: Message) -> Self {
+            self.on_press = Some(message);
             self
         }
 
-        pub fn on_drop(mut self, on_drop: Message) -> Self {
-            self.on_drop = Some(OnDrop::Direct(on_drop));
+        pub fn on_drop<F>(mut self, message: F) -> Self 
+        where
+            F: Fn(Point, Rectangle) -> Message + 'a,
+        {
+            self.on_drop = Some(Box::new(message));
+            self
+        }
+        
+        pub fn on_drag<F>(mut self, message: F) -> Self
+        where
+            F: Fn(Point, Rectangle) -> Message + 'a,
+        {
+            self.on_drag = Some(Box::new(message));
             self
         }
 
@@ -152,13 +151,53 @@ mod button {
     struct State {
         is_pressed: bool,
         pos: Point,
+        overlay_bounds: Rectangle,
     }
 
-    /*
-    pub fn button<'a, Message>(pos: Point) -> Button<'a, Message> {
-        Button::new(pos)
+    pub fn button<'a, Message, Theme, Renderer>(
+        content: impl Into<Element<'a, Message, Theme, Renderer>>,
+        ) -> Button<'a, Message, Theme, Renderer>
+    where
+        Message: Clone,
+        Renderer: renderer::Renderer,
+        Theme: Catalog,
+    {
+        Button::new(content)
     }
-    */
+    pub fn print_bounds() -> impl Operation<()> {
+        struct PrintBounds;
+        
+        impl Operation<()> for PrintBounds {
+
+            fn container(
+                &mut self,
+                id: Option<&Id>,
+                bounds: Rectangle,
+                operate_on_children: &mut dyn FnMut(&mut dyn Operation<()>)
+            ) {
+                println!("Widget {:?} has bounds {:?}", id, bounds);
+                operate_on_children(self);
+            }
+
+            fn finish(&self) -> Outcome<()> {
+                Outcome::None
+            }
+
+            fn scrollable(
+                &mut self,
+                _state: &mut dyn Scrollable,
+                _id: Option<&Id>,
+                bounds: Rectangle,
+                _content_bounds: Rectangle,
+                translation: Vector,
+            ) {
+                println!("Scrollable widget has bounds {:?} and translation {:?}", bounds, translation);
+            }
+        }
+
+        PrintBounds
+    }
+
 
     impl<'a, Message, Theme, Renderer> Widget<Message, Theme, Renderer> 
         for Button<'a, Message, Theme, Renderer>
@@ -197,28 +236,17 @@ mod button {
                 limits: &layout::Limits,
             ) -> layout::Node {
                 let state = tree.state.downcast_ref::<State>();
-                let x =
-                layout::padded(
-                    limits,
-                    self.width,
-                    self.height,
-                    self.padding,
-                    |limits| {
-                        self.content
-                            .as_widget()
-                            .layout(&mut tree.children[0], renderer, limits,)
-                            
-                    },
+                let content_node = self
+                    .content
+                    .as_widget()
+                    .layout(&mut tree.children[0], renderer, limits);
+                content_node
 
-                );
-                //Move the Node to whatever state's position is when UI reloads,
-                //which will happen everytime an event fires in on_event
-                x.move_to(state.pos)
-                // x.move_to(self.pos)
-                // let size = Size::new(100.0, 100.0);
-                // let node = layout::Node::new(size);
-                // node.move_to(self.pos)
             }
+
+
+
+
             fn operate(
                 &self,
                 tree: &mut Tree,
@@ -226,6 +254,7 @@ mod button {
                 renderer: &Renderer,
                 operation: &mut dyn Operation,
             ) {
+                println!("o");
                 operation.container(None, layout.bounds(), &mut |operation| {
                     self.content.as_widget().operate(
                         &mut tree.children[0],
@@ -242,122 +271,76 @@ mod button {
                 event: Event,
                 layout: Layout<'_>,
                 cursor: Cursor,
-                _renderer: &Renderer,
+                renderer: &Renderer,
                 _clipboard: &mut dyn Clipboard,
                 shell: &mut Shell<'_, Message>,
                 _viewport: &Rectangle,
             ) -> IcedStatus {
-                //custom_event acts as a wrapper around the preexisting Iced Event
-                let custom_event = match event {
-                    Event::Mouse(iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left)) => {
-                        if self.on_press.is_some() && cursor.is_over(layout.bounds()) {
-                            println!("One");
-                            CustomEvent::IcedEvent(event)
-                        } else {
-                            CustomEvent::None
-                        }
-                    }
-                    Event::Mouse(iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left)) => {
-                        if self.dragging {
-                            self.dragging = false;
-                            CustomEvent::IcedEvent(event)
-                            // CustomEvent::Drop
-                        } else {
-                            CustomEvent::IcedEvent(event)
-                        }
-                    }
-                    _ => CustomEvent::IcedEvent(event),
-                };
+                let mut operation = print_bounds();
 
-                //match on the custom event, handle original Iced events like "Mouse" and "Keyboard
-                match custom_event {
-                    CustomEvent::Drop => {
-                        println!("Inside CustomEvent::Drop");
-                        return IcedStatus::Captured;
-                    },
-                    CustomEvent::IcedEvent(original_event) => {
-                        // Handle the original Iced event
-                        match original_event {
-                            Event::Mouse(mouse_event) => match mouse_event {
-                                iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left) => {
-                                    println!("Two");
-                                    let state = tree.state.downcast_mut::<State>();
-                                    state.is_pressed = true;
+                // if let Some(on_drop) = self.on_drop.as_deref() {
+                    let state = tree.state.downcast_mut::<State>();
+
+                    match event {
+                        Event::Mouse(mouse_event) => match mouse_event {
+                            iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left) => {
+                                if cursor.is_over(layout.bounds()) {
+                                    state.pos = layout.bounds().position();
+                                    state.overlay_bounds.width = layout.bounds().width;
+                                    state.overlay_bounds.height = layout.bounds().height;
                                     self.dragging = true;
-                                    IcedStatus::Captured
-
-                                    // dbg!("{}",cursor.position().unwrap());
-                                },
-
-                                iced::mouse::Event::ButtonPressed(iced::mouse::Button::Right) => {
-                                    dbg!(layout.bounds());
-                                    return IcedStatus::Ignored;
-                                },
-                                iced::mouse::Event::CursorMoved { position } => {
-                                    if self.dragging {
-                                        let state = tree.state.downcast_mut::<State>();
-                                        state.pos = position;
-                                        // self.pos = position;
-                                        shell.invalidate_layout(); //Redraws layout every time an event is
-
-                                        //triggered
-                                        // println!("we dragging");
+                                    return IcedStatus::Captured;
+                                    if let Some(on_press) = self.on_press.clone() {
+                                        shell.publish(on_press);
                                     }
-                                    IcedStatus::Captured
-                                },
-                                iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left) => {
-                                    if let Some(on_press) = self.on_press.as_ref().map(OnPress::get) {
-                                        let state = tree.state.downcast_mut::<State>();
-                                        if state.is_pressed {
-                                            state.is_pressed = false;
-                                            let bounds = layout.bounds();
-                                            if cursor.is_over(bounds) {
-                                                shell.publish(on_press);
-                                            }
-                                            return IcedStatus::Captured;
-                                        }
-                                    }
-                                    //self.pos = cursor.position().expect("Idk");
-                                    // shell.invalidate_layout();
-                                    self.dragging = false;
-                                    IcedStatus::Captured
-                                },
-                                _ => {
-                                    return IcedStatus::Ignored;
-                                },
-                            }//end mouse event match
-                            _ => { //other arms (keyboard, window, touch)
+                                    return IcedStatus::Captured;
+                                }
                                 return IcedStatus::Ignored;
                             },
-                        }
+                            iced::mouse::Event::ButtonPressed(iced::mouse::Button::Right) => {
+                                return IcedStatus::Ignored;
+                            },
+                            iced::mouse::Event::CursorMoved { position } => {
+                                    state.overlay_bounds.x = position.x;
+                                    state.overlay_bounds.y = position.y;
+                            },
+                            iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left) => {
+                                self.dragging = false;//overlay display relies on dragging=true
+
+                            },
+                            _ => {
+                                return IcedStatus::Ignored;
+                            },
+                        }//end mouse event match
+                        _ => { //other arms (keyboard, window, touch)
+                            return IcedStatus::Ignored;
+                        },
                     }
-                    _ => {
-                        return IcedStatus::Ignored;
-                    },
-                }
+                // }
+                return IcedStatus::Ignored;
             }
 
-    /*
-       fn draw(
-       &self,
-       _state: &widget::Tree,
-       renderer: &mut Renderer,
-       _theme: &Theme,
-       _style: &renderer::Style,
-       layout: Layout<'_>,
-       _cursor: mouse::Cursor,
-       _viewport: &Rectangle,
-       ) {
-       renderer.fill_quad(
-                renderer::Quad {
-                bounds: layout.bounds(),
-                border: border::rounded(0.0),
-                ..renderer::Quad::default()
-                },
-                Color::BLACK,
-                );
-                }
-                */
+            /*
+               fn draw(
+               &self,
+               _state: &widget::Tree,
+               renderer: &mut Renderer,
+               _theme: &Theme,
+               _style: &renderer::Style,
+               layout: Layout<'_>,
+               _cursor: mouse::Cursor,
+               _viewport: &Rectangle,
+               ) {
+               renderer.fill_quad(
+               renderer::Quad {
+               bounds: layout.bounds(),
+               border: border::rounded(0.0),
+               ..renderer::Quad::default()
+               },
+               Color::BLACK,
+               );
+               }
+               */
             fn draw(
                 &self,
                 tree: &Tree,
@@ -369,7 +352,6 @@ mod button {
                 viewport: &Rectangle,
             ) {
                 let bounds = layout.bounds();
-                let content_layout = layout.children().next().unwrap();
                 let is_mouse_over = cursor.is_over(bounds);
 
                 let status = if self.on_press.is_none() {
@@ -417,12 +399,13 @@ mod button {
                     &renderer::Style {
                         text_color: style.text_color,
                     },
-                    content_layout,
+                    layout,
                     cursor,
                     &viewport,
                 );
             }
 
+            //Just changes how the cursor looks
             fn mouse_interaction(
                 &self,
                 _tree: &Tree,
@@ -448,17 +431,28 @@ mod button {
                 renderer: &Renderer,
                 translation: Vector,
             ) -> Option<overlay::Element<'b, Message, Theme, Renderer>> {
-                self.content.as_widget_mut().overlay(
-                    &mut tree.children[0],
-                    layout.children().next().unwrap(),
-                    renderer,
-                    translation,
-                )
+                let state: &mut State = tree.state.downcast_mut::<State>();
+                let mut children = tree.children.iter_mut();
+                if self.dragging {
+                    return Some(overlay::Element::new(Box::new(Overlay {
+                        content: &self.content,
+                        tree: children.next().unwrap(),
+                        overlay_bounds: state.overlay_bounds,
+                    })));
+                } else {
+                    None
+                }
+
+                // self.content.as_widget_mut().overlay(
+                //     &mut tree.children[0],
+                //     layout.children().next().unwrap(),
+                //     renderer,
+                //     translation,
+                // )
             }
-
-
         }
 
+    //Implementing the From trait allows Button to be treated as a generic Element
     impl<'a, Message, Theme, Renderer> From<Button<'a, Message, Theme, Renderer>>
         for Element<'a, Message, Theme, Renderer>
     where
@@ -468,6 +462,59 @@ mod button {
     {
         fn from(button: Button<'a, Message, Theme, Renderer>) -> Self {
             Self::new(button)
+        }
+    }
+
+    struct Overlay<'a, 'b, Message, Theme, Renderer>
+    where
+        Renderer: renderer::Renderer,
+    {
+        content: &'b Element<'a, Message, Theme, Renderer>,
+        tree: &'b mut Tree,
+        overlay_bounds: Rectangle,
+    }
+
+    impl<'a, 'b, Message, Theme, Renderer> iced::advanced::Overlay<Message, Theme, Renderer>
+        for Overlay<'a, 'b, Message, Theme, Renderer>
+    where
+        Renderer: renderer::Renderer,
+    {
+        //Responsible for where the widget overlay is placed
+        fn layout(&mut self, renderer: &Renderer, _bounds: Size) -> layout::Node {
+            // dbg!(self.overlay_bounds.position());
+            Widget::<Message, Theme, Renderer>::layout(
+                self.content.as_widget(),
+                self.tree,
+                renderer,
+                &layout::Limits::new(Size::ZERO, self.overlay_bounds.size()),
+            )
+                .move_to(self.overlay_bounds.position())
+
+        }
+
+        //How the button's overlay looks
+        fn draw(
+            &self,
+            renderer: &mut Renderer,
+            theme: &Theme,
+            inherited_style: &renderer::Style,
+            layout: Layout<'_>,
+            cursor_position: mouse::Cursor,
+        ) {
+            Widget::<Message, Theme, Renderer>::draw(
+                self.content.as_widget(),
+                self.tree,
+                renderer,
+                theme,
+                inherited_style,
+                layout,
+                cursor_position,
+                &Rectangle::with_size(Size::INFINITY),
+            );
+        }
+
+        fn is_over(&self, _layout: Layout<'_>, _renderer: &Renderer, _cursor_position: Point) -> bool {
+            false
         }
     }
 
@@ -516,7 +563,7 @@ mod button {
     impl Default for Style {
         fn default() -> Self {
             Self {
-                background: None,
+                background: Some(Background::Color(Color::BLACK)),
                 text_color: Color::BLACK,
                 border: Border::default(),
                 shadow: Shadow::default(),
@@ -552,6 +599,8 @@ mod button {
     }
 
     /// A primary button; denoting a main action.
+    //NOTE: place to actually set button theme. Note the default fn for the button 
+    //above, Box::new(primary)
     pub fn primary(theme: &Theme, status: Status) -> Style {
         let palette = theme.extended_palette();
         let base = styled(palette.primary.strong);
@@ -559,7 +608,8 @@ mod button {
         match status {
             Status::Active | Status::Pressed => base,
             Status::Hovered => Style {
-                background: Some(Background::Color(palette.primary.base.color)),
+                background: Some(Background::Color(Color::BLACK)),
+                // background: Some(Background::Color(palette.primary.base.color)),
                 ..base
             },
             Status::Disabled => disabled(base),
@@ -650,9 +700,13 @@ mod button {
     }
 }
 
-use iced::widget::{center, container, Stack, Column, slider, text, Text};
+
+
+use iced::widget::{center, container, Stack, column, row, Column, slider, text, Text};
 use iced::{ Center, Element, Length};
 use iced::Point;
+use iced::advanced::overlay;
+use button::button;
 
 pub fn main() -> iced::Result {
     iced::run("Custom Widget - Iced", App::update, App::view)
@@ -665,6 +719,7 @@ struct App {
 #[derive(Debug, Clone, Copy)]
 enum Message {
     RadiusChanged,
+    Test,
 }
 
 impl App {
@@ -672,26 +727,43 @@ impl App {
         match message {
             Message::RadiusChanged => {
                 println!("Main call, button was pressed!");
-            }
+            },
+            Message::Test => {
+                println!("Test on drop");
+            },
         }
     }
     fn view(&self) -> Element<Message> {
-        let b = button::Button::new("test", Point::new(300.0, 300.0))
-            .on_press(Message::RadiusChanged);
-        let playlist = container("Playlist")
-            .height(300)
-            .style(container::dark);
-        Stack::new()
-            .push(playlist)
-            .push(b)
-            .into()
-        
+        let header = container(text("Test Zones").size(20))
+            .center(Length::Fill)
+            .padding(10.0)
+            .width(Length::Fill)
+            .height(Length::Fixed(50.0));
+        let c = button(container("test"))
+            .height(50)
+            .width(100)
+            .on_press(Message::RadiusChanged)
+            // .on_drop(Message::Test)
+            .clip(false);
+        let a = container("A")
+            .height(500)
+            .width(400)
+            .clip(false)
+            .style(container::bordered_box);
+        let b = container("B")
+            .height(500)
+            .width(400)
+            .clip(false)
+            .style(container::bordered_box);
+        column![
+            header,
+            row![
+                c,
+                a,
+                b,
+            ].padding(10.0),
+        ].into()
 
-
-            
-
-
-        
         // Column::new()
         //     .push(b)
         //     .push(x)
@@ -699,3 +771,40 @@ impl App {
         //     .into()
     }
 }
+// use iced::{
+//     advanced::widget::{operate, Id},
+//     advanced::{graphics::futures::MaybeSend },
+//     task::Task, Rectangle,
+// };
+//
+// pub fn zones_on_point<T, MF>(
+//     msg: MF,
+//     point: Point,
+//     options: Option<Vec<Id>>,
+//     depth: Option<usize>,
+// ) -> Task<T>
+// where
+//     T: Send + 'static,
+//     MF: Fn(Vec<(Id, Rectangle)>) -> T + MaybeSend + Sync + Clone + 'static,
+// {
+//     operate(drop::find_zones(
+//         move |bounds| bounds.contains(point),
+//         options,
+//         depth,
+//     ))
+//     .map(move |id| msg(id))
+// }
+//
+// pub fn find_zones<Message, MF, F>(
+//     msg: MF,
+//     filter: F,
+//     options: Option<Vec<Id>>,
+//     depth: Option<usize>,
+// ) -> Task<Message>
+// where
+//     Message: Send + 'static,
+//     MF: Fn(Vec<(Id, Rectangle)>) -> Message + MaybeSend + Sync + Clone + 'static,
+//     F: Fn(&Rectangle) -> bool + Send + 'static,
+// {
+//     operate(drop::find_zones(filter, options, depth)).map(move |id| msg(id))
+// }
