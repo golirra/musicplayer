@@ -32,7 +32,7 @@ impl AudioState {
             .into()
     }
 
-    // Your `playback_controls` function with images
+    //Turns a list of playback controls into buttons
     pub fn playback_controls() -> Row<'static, Audio> {
 
         let playback_controls = BUTTONS.iter().fold(Row::new(), |row, (label, action)| {
