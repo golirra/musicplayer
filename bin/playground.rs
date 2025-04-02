@@ -26,6 +26,7 @@ pub mod button {
         Renderer: renderer::Renderer,
         Theme: Catalog,
     {
+        id: Option<Id>,
         content: Element<'a, Message, Theme, Renderer>,
         on_press: Option<Message>,
         on_drop: Option<Box<dyn Fn(Point, Rectangle) -> Message + 'a>>,
@@ -68,6 +69,7 @@ pub mod button {
             let size = content.as_widget().size_hint();
 
             Button { 
+                id: None,
                 content,
                 on_press: None,
                 on_drop: None,
@@ -80,6 +82,11 @@ pub mod button {
                 status: None,
                 dragging: false,
             }
+        }
+
+        pub fn id(mut self) -> Self {
+            self.id = Some(Id::new("TEST"));
+            self
         }
 
         pub fn on_press(mut self, message: Message) -> Self {
@@ -108,6 +115,7 @@ pub mod button {
             self.width = width.into();
             self
         }
+
 
         /// Sets the height of the [`Button`].
         pub fn height(mut self, height: impl Into<Length>) -> Self {
@@ -175,7 +183,8 @@ pub mod button {
                 bounds: Rectangle,
                 operate_on_children: &mut dyn FnMut(&mut dyn Operation<()>)
             ) {
-                println!("Widget {:?} has bounds {:?}", id, bounds);
+                println!("Button {:?} has bounds {:?}", id, bounds);
+                //NOTE: calling operate_on_children attempts to keep traversing the widget tree
                 operate_on_children(self);
             }
 
@@ -255,13 +264,12 @@ pub mod button {
                 operation: &mut dyn Operation,
             ) {
                 println!("o");
-                operation.container(None, layout.bounds(), &mut |operation| {
-                    self.content.as_widget().operate(
-                        &mut tree.children[0],
-                        layout.children().next().unwrap(),
-                        renderer,
-                        operation,
-                    );
+                //NOTE:read as_ref() documentation if confused
+
+                operation.container(self.id.as_ref(), layout.bounds(), &mut |operation| {
+                    self.content
+                        .as_widget()
+                        .operate(&mut tree.children[0], layout, renderer, operation);
                 });
             }
 
@@ -289,6 +297,7 @@ pub mod button {
                                     state.overlay_bounds.width = layout.bounds().width;
                                     state.overlay_bounds.height = layout.bounds().height;
                                     self.dragging = true;
+                                    self.operate(tree, layout, renderer, &mut operation);
                                     return IcedStatus::Captured;
                                     if let Some(on_press) = self.on_press.clone() {
                                         shell.publish(on_press);
@@ -703,6 +712,8 @@ pub mod button {
 
 
 use iced::widget::{center, container, Stack, column, row, Column, slider, text, Text};
+use iced::widget::container::Id as CId;
+use iced::advanced::widget::Id;
 use iced::{ Center, Element, Length};
 use iced::Point;
 use iced::advanced::overlay;
@@ -739,8 +750,9 @@ impl App {
             .padding(10.0)
             .width(Length::Fill)
             .height(Length::Fixed(50.0));
-        let c = button(container("test"))
+        let c = button(container("test").id(CId::new("C")))
             .height(50)
+            .id()
             .width(100)
             .on_press(Message::RadiusChanged)
             // .on_drop(Message::Test)
