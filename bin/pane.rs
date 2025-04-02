@@ -1,15 +1,17 @@
 //A modified version of a Container that enables drag/drop functionality on items inside it 
 #![allow(warnings)]
 mod pane {
+    use crate::playground;
     use iced::advanced::layout::{self, Layout};
     use iced::border::{self, Border};
-    use iced::advanced::renderer;
+    use iced::advanced::{renderer, overlay as core_overlay};
     use iced::advanced::widget::{self, Operation, Widget};
     use iced::advanced::widget::tree::{self, Tree};
     use iced::theme::palette;
     use iced::overlay;
     use iced::mouse;
     use iced::mouse::Cursor;
+    use iced::event::Status as IcedStatus;
     use iced::Event;
     use iced::Point;
     use iced::event;
@@ -35,8 +37,7 @@ mod pane {
     {
         id: Option<Id>,
         content: Element<'a, Message, Theme, Renderer>,
-        on_press: Option<OnPress<'a, Message>>,
-        on_drop: Option<OnDrop<Message>>,
+        on_drop: Option<OnDrop<'a, Message>>,
         width: Length,
         height: Length,
         max_width: f32,
@@ -46,32 +47,19 @@ mod pane {
         padding: Padding,
         clip: bool,
         class: Theme::Class<'a>,
-        // status: Option<Status>,
         dragging: bool
     }
 
-    enum OnDrop<Message> {
-        Direct(Message),
-    }
-
-    impl<Message: Clone> OnDrop<Message> {
-        fn get(&self) -> Message {
-            match self {
-                OnDrop::Direct(message) => message.clone(),
-            }
-        }
-    }
-
-    enum OnPress<'a, Message> {
+    enum OnDrop<'a, Message> {
         Direct(Message),
         Closure(Box<dyn Fn() -> Message + 'a>),
     }
 
-    impl<'a, Message: Clone> OnPress<'_, Message> {
+    impl<Message: Clone> OnDrop<'_, Message> {
         fn get(&self) -> Message {
             match self {
-                OnPress::Direct(message) => message.clone(),
-                OnPress::Closure(f) => f(),
+                OnDrop::Direct(message) => message.clone(),
+                OnDrop::Closure(f) => f(),
             }
         }
     }
@@ -94,10 +82,9 @@ mod pane {
             let size = content.as_widget().size_hint();
 
             Pane { 
-                id: None,
+                id: Some(Id::unique()),
                 content,
                 on_drop: None,
-                on_press: None,
                 width: size.width.fluid(),
                 height: size.height.fluid(),
                 max_width: f32::INFINITY,
@@ -107,15 +94,8 @@ mod pane {
                 padding: Padding::ZERO,
                 clip: false,
                 class: Theme::default(),
-                // status: None,
                 dragging: false,
             }
-        }
-
-        //Sets the message that will be produced when the Pane is pressed
-        pub fn on_press(mut self, on_press: Message) -> Self {
-            self.on_press = Some(OnPress::Direct(on_press));
-            self
         }
 
         pub fn on_drop(mut self, on_drop: Message) -> Self {
@@ -273,6 +253,7 @@ mod pane {
     impl<'a, Message, Theme, Renderer> Widget<Message, Theme, Renderer>
         for Pane<'a, Message, Theme, Renderer>
     where
+        Message: Clone + 'a,
         Theme: Catalog,
         Renderer: renderer::Renderer,
     {
@@ -317,6 +298,7 @@ mod pane {
                 self.vertical_alignment,
                 |limits| self.content.as_widget().layout(tree, renderer, limits),
             )
+
         }
 
         fn operate(
@@ -326,6 +308,7 @@ mod pane {
             renderer: &Renderer,
             operation: &mut dyn Operation,
         ) {
+            println!("operating");
             operation.container(
                 self.id.as_ref().map(|id| &id.0),
                 layout.bounds(),
@@ -350,7 +333,49 @@ mod pane {
             clipboard: &mut dyn Clipboard,
             shell: &mut Shell<'_, Message>,
             viewport: &Rectangle,
-        ) -> event::Status {
+        ) -> IcedStatus {//IcedStatus is just iced::event::Status
+            let mut operation = playground::button::print_bounds();
+        
+
+
+            match event {
+                Event::Mouse(mouse_event) => match mouse_event {
+                    iced::mouse::Event::ButtonPressed(iced::mouse::Button::Right) => {
+
+
+                        if cursor.is_over(layout.bounds()) {
+                            self.operate(tree, layout, &renderer, &mut operation);
+                        }
+                        return IcedStatus::Ignored;
+                    },
+                    // iced::mouse::Event::CursorMoved { position } => {
+                    //     return IcedStatus::Ignored;
+                    // },
+                    iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left) => {
+                        if let Some(on_drop) = self.on_drop.as_ref().map(OnDrop::get) {
+                            // let state = tree.state.downcast_mut::<State>();
+                        }
+                        println!("test");
+                    },
+                    iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left) => {
+                        if self.on_drop.is_some() && cursor.is_over(layout.bounds()) {
+                            shell.publish(self.on_drop.as_ref().map(OnDrop::get).unwrap());
+                        }
+                        return IcedStatus::Captured;
+                    },
+                    _ => {
+                        return IcedStatus::Ignored;
+                    },
+                }, 
+                _ => { //handle other events
+                    return IcedStatus::Ignored
+                },
+
+            }
+
+
+
+
             self.content.as_widget_mut().on_event(
                 tree,
                 event,
@@ -371,6 +396,7 @@ mod pane {
             viewport: &Rectangle,
             renderer: &Renderer,
         ) -> mouse::Interaction {
+            // println!("test");
             self.content.as_widget().mouse_interaction(
                 tree,
                 layout.children().next().unwrap(),
@@ -423,6 +449,13 @@ mod pane {
             renderer: &Renderer,
             translation: Vector,
         ) -> Option<overlay::Element<'b, Message, Theme, Renderer>> {
+            // core_overlay::from_children(
+            //     &mut self.children,
+            //     tree,
+            //     layout,
+            //     renderer,
+            //     translation,
+            // )
             self.content.as_widget_mut().overlay(
                 tree,
                 layout.children().next().unwrap(),
@@ -435,14 +468,14 @@ mod pane {
     impl<'a, Message, Theme, Renderer> From<Pane<'a, Message, Theme, Renderer>>
         for Element<'a, Message, Theme, Renderer>
     where
-        Message: 'a,
+        Message: Clone + 'a,
         Theme: Catalog + 'a,
         Renderer: renderer::Renderer + 'a,
         {
             fn from(
-                column: Pane<'a, Message, Theme, Renderer>,
+                pane: Pane<'a, Message, Theme, Renderer>,
             ) -> Element<'a, Message, Theme, Renderer> {
-                Element::new(column)
+                Element::new(pane)
             }
         }
 
@@ -522,6 +555,7 @@ mod pane {
             id.0
         }
     }
+
 
     /// Produces a [`Task`] that queries the visible screen bounds of the
     /// [`Pane`] with the given [`Id`].
@@ -760,13 +794,13 @@ mod pane {
     }
 }
 
-
-use iced::widget::{center, Container, container, Stack, Column, slider, text, Text};
+use iced::widget::{center, row, Container, column, container, Stack, Column, slider, text, Text};
 use iced::{ Center, Element, Length};
 use iced::Point;
 use iced::overlay;
 //Import stuff from other test binary
 mod playground;
+mod lib;
 use playground::button;
 
 pub fn main() -> iced::Result {
@@ -780,35 +814,43 @@ struct App {
 #[derive(Debug, Clone, Copy)]
 enum Message {
     Test,
+    Dropped,
 }
 
 impl App {
     fn update(&mut self, message: Message) {
         match message {
             Message::Test => {
-                println!("x");
-            }
+            },
+            Message::Dropped => {
+                println!("Dropped received");
+            },
         }
     }
-    fn view(&self) -> Element<Message> {
-        let base = pane::Pane::new("BASE")
-            .height(1000)
-            .width(800)
-            .clip(false);
-        
-        let b = button::Button::new("test", Point::new(300.0, 300.0))
-            .on_press(Message::Test)
-            .clip(false);
 
-        let playlist = pane::Pane::new("Playlist")
+    fn view(&self) -> Element<Message> {
+
+        let a: pane::Pane<Message> = pane::Pane::new("A")
             .height(250)
             .width(250)
             .clip(false)
-            .style(pane::dark);
+            .on_drop(Message::Dropped)
+            .style(pane::bordered_box);
+        let b: pane::Pane<Message> = pane::Pane::new("B")
+            .height(500)
+            .width(500)
+            .on_drop(Message::Dropped)
+            .style(pane::bordered_box)
+            .clip(false);
+        let c = button::Button::new("test")
+            .on_press(Message::Dropped)
+            .clip(false);
+        // iced::widget::hover(playlist, b)
+
         Stack::new()
-            .push(base)
-            .push(playlist)
-            .push(b)
+            .push(
+                row![a, b, c]
+            )
             .into()
     }
 }

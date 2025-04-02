@@ -19,7 +19,6 @@ pub struct FileState {
 impl FileState {
     pub fn new() -> Self {
         Self {
-
             files: vec![],
         }
     }
@@ -37,7 +36,7 @@ impl FileState {
                 self.files = scanner::get_paths_with_metadata().unwrap().into_iter().collect();
                 Task::none()
             },
-            File::Select(path) => {
+            File::Select(_path) => {
                 Task::none()
             },
         }
@@ -51,7 +50,6 @@ impl FileState {
     }
 
     pub fn files_as_buttons(&self) -> Column<File> {
-
             self.files
                 .iter()
                 .fold(Column::new(), |column, tuple| {
