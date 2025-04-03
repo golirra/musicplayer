@@ -172,23 +172,27 @@ pub mod button {
     {
         Button::new(content)
     }
-    pub fn print_bounds() -> impl Operation<()> {
+
+    pub fn print_bounds<T>() -> impl Operation<T>
+    where
+    T: Send + 'static,
+    {
         struct PrintBounds;
         
-        impl Operation<()> for PrintBounds {
+        impl<T> Operation<T> for PrintBounds {
 
             fn container(
                 &mut self,
                 id: Option<&Id>,
                 bounds: Rectangle,
-                operate_on_children: &mut dyn FnMut(&mut dyn Operation<()>)
+                operate_on_children: &mut dyn for<'a> FnMut(&'a mut (dyn Operation<T> + 'a))
             ) {
                 println!("Button {:?} has bounds {:?}", id, bounds);
                 //NOTE: calling operate_on_children attempts to keep traversing the widget tree
                 operate_on_children(self);
             }
 
-            fn finish(&self) -> Outcome<()> {
+            fn finish(&self) -> Outcome<T> {
                 Outcome::None
             }
 
@@ -284,7 +288,7 @@ pub mod button {
                 shell: &mut Shell<'_, Message>,
                 _viewport: &Rectangle,
             ) -> IcedStatus {
-                let mut operation = print_bounds();
+                // let mut operation = print_bounds();
 
                 // if let Some(on_drop) = self.on_drop.as_deref() {
                     let state = tree.state.downcast_mut::<State>();
@@ -297,7 +301,7 @@ pub mod button {
                                     state.overlay_bounds.width = layout.bounds().width;
                                     state.overlay_bounds.height = layout.bounds().height;
                                     self.dragging = true;
-                                    self.operate(tree, layout, renderer, &mut operation);
+                                    // self.operate(tree, layout, renderer, &mut operation);
                                     return IcedStatus::Captured;
                                     if let Some(on_press) = self.on_press.clone() {
                                         shell.publish(on_press);
@@ -307,13 +311,21 @@ pub mod button {
                                 return IcedStatus::Ignored;
                             },
                             iced::mouse::Event::ButtonPressed(iced::mouse::Button::Right) => {
+                                dbg!(tree);
+                                // dbg!(self.diff(tree));
                                 return IcedStatus::Ignored;
+
                             },
                             iced::mouse::Event::CursorMoved { position } => {
                                     state.overlay_bounds.x = position.x;
                                     state.overlay_bounds.y = position.y;
                             },
                             iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left) => {
+                                if let Some(on_drop) = self.on_drop.as_deref() {
+                                    let message = (on_drop)(cursor.position().unwrap(), state.overlay_bounds); 
+                                    shell.publish(message);
+                                }
+
                                 self.dragging = false;//overlay display relies on dragging=true
 
                             },
@@ -712,10 +724,16 @@ pub mod button {
 
 
 use iced::widget::{center, container, Stack, column, row, Column, slider, text, Text};
+use iced::advanced::widget::Operation;
+use iced::{
+    advanced::widget::{operate},
+    advanced::{graphics::futures::MaybeSend, renderer},
+};
+use iced::Task;
 use iced::widget::container::Id as CId;
 use iced::advanced::widget::Id;
 use iced::{ Center, Element, Length};
-use iced::Point;
+use iced::{Point, Rectangle};
 use iced::advanced::overlay;
 use button::button;
 
@@ -723,25 +741,47 @@ pub fn main() -> iced::Result {
     iced::run("Custom Widget - Iced", App::update, App::view)
 }
 
-#[derive(Default)]
 struct App {
+    left_song: Song,
+    right_song: Song,
+    left: CId,
+    right: CId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 enum Message {
-    RadiusChanged,
-    Test,
+    DropSong(Point, Rectangle),
+    HandleZonesFound(Song, Vec<(Id, Rectangle)>),
 }
 
+impl Default for App {
+    fn default() -> Self {
+        Self {
+            left_song: Song::Default,
+            right_song: Song::Default,
+            left: CId::new("left"),
+            right: CId::new("right"),
+        }
+    }
+}
 impl App {
-    fn update(&mut self, message: Message) {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::RadiusChanged => {
-                println!("Main call, button was pressed!");
+            Message::DropSong(point, _bounds) => {
+                // dbg!(point, _bounds);
+                zones_on_point()
             },
-            Message::Test => {
-                println!("Test on drop");
+            Message::HandleZonesFound(song, zones) => {
+                if let Some((zone, _)) = zones.get(0) {
+                    if *zone == self.left.clone().into() {
+                        self.left_song = song;
+                    } else {
+                        self.right_song = song;
+                    }
+                }
+                Task::none()
             },
+
         }
     }
     fn view(&self) -> Element<Message> {
@@ -754,7 +794,7 @@ impl App {
             .height(50)
             .id()
             .width(100)
-            .on_press(Message::RadiusChanged)
+            .on_drop(move |point, rect| Message::DropSong(point, rect)) 
             // .on_drop(Message::Test)
             .clip(false);
         let a = container("A")
@@ -776,47 +816,22 @@ impl App {
             ].padding(10.0),
         ].into()
 
-        // Column::new()
-        //     .push(b)
-        //     .push(x)
-        //     .spacing(50)
-        //     .into()
     }
 }
-// use iced::{
-//     advanced::widget::{operate, Id},
-//     advanced::{graphics::futures::MaybeSend },
-//     task::Task, Rectangle,
-// };
-//
-// pub fn zones_on_point<T, MF>(
-//     msg: MF,
-//     point: Point,
-//     options: Option<Vec<Id>>,
-//     depth: Option<usize>,
-// ) -> Task<T>
-// where
-//     T: Send + 'static,
-//     MF: Fn(Vec<(Id, Rectangle)>) -> T + MaybeSend + Sync + Clone + 'static,
-// {
-//     operate(drop::find_zones(
-//         move |bounds| bounds.contains(point),
-//         options,
-//         depth,
-//     ))
-//     .map(move |id| msg(id))
-// }
-//
-// pub fn find_zones<Message, MF, F>(
-//     msg: MF,
-//     filter: F,
-//     options: Option<Vec<Id>>,
-//     depth: Option<usize>,
-// ) -> Task<Message>
-// where
-//     Message: Send + 'static,
-//     MF: Fn(Vec<(Id, Rectangle)>) -> Message + MaybeSend + Sync + Clone + 'static,
-//     F: Fn(&Rectangle) -> bool + Send + 'static,
-// {
-//     operate(drop::find_zones(filter, options, depth)).map(move |id| msg(id))
-// }
+
+#[derive(Debug, Clone, Copy, Default)]
+enum Song {
+    #[default]
+    Default,
+    A,
+}
+
+pub fn zones_on_point<T>(
+) -> Task<T> 
+where 
+    T: Send + 'static,
+{
+    operate(button::print_bounds())
+
+}
+
